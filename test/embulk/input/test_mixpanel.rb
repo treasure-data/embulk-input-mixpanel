@@ -1,4 +1,5 @@
-# require "embulk/input/mixpanel" TODO: prepare embulk requiring
+require "prepare_embulk"
+require "embulk/input/mixpanel"
 
 module Embulk
   module Input
