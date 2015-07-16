@@ -1,13 +1,13 @@
 
 Gem::Specification.new do |spec|
   spec.name          = "embulk-input-mixpanel"
-  spec.version       = "0.1.0"
+  spec.version       = "0.0.1"
   spec.authors       = ["yoshihara"]
   spec.summary       = "Mixpanel input plugin for Embulk"
   spec.description   = "Loads records from Mixpanel."
-  spec.email         = ["h.yoshihara@everyleaf.com"]
+  spec.email         = ["h.yoshihara@everyleaf.com", "k@uu59.org"]
   spec.licenses      = ["Apache2"]
-  # TODO set this: spec.homepage      = "https://github.com/h.yoshihara/embulk-input-mixpanel"
+  spec.homepage      = "https://github.com/treasure-data/embulk-input-mixpanel"
 
   spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
   spec.test_files    = spec.files.grep(%r{^(test|spec)/})
