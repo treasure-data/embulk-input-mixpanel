@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.summary       = "Mixpanel input plugin for Embulk"
   spec.description   = "Loads records from Mixpanel."
   spec.email         = ["h.yoshihara@everyleaf.com"]
-  spec.licenses      = ["MIT"]
+  spec.licenses      = ["Apache2"]
   # TODO set this: spec.homepage      = "https://github.com/h.yoshihara/embulk-input-mixpanel"
 
   spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
