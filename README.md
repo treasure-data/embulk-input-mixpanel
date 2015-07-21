@@ -4,7 +4,7 @@
 
 # Mixpanel input plugin for Embulk
 
-TODO: Write short description here and embulk-input-mixpanel.gemspec file.
+embulk-input-mixpanel is the Embulk input plugin for [Mixpanel](https://mixpanel.com).
 
 ## Overview
 
