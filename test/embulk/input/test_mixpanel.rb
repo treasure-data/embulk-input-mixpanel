@@ -45,7 +45,7 @@ module Embulk
           @plugin.run
         end
 
-        def test_run_timezone
+        def test_timezone
           stub(@plugin).preview? { false }
           adjusted = record_epoch - timezone_offset_seconds
           mock(@page_builder).add(["FOO", adjusted]).times(records.length)
