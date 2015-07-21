@@ -16,7 +16,13 @@ module Embulk
         task[:api_key] = config.param(:api_key, :string)
         task[:api_secret] = config.param(:api_secret, :string)
         task[:timezone] = config.param(:timezone, :string)
-        TZInfo::Timezone.get(task[:timezone]) # raises exception if timezone is invalid string
+        begin
+          # raises exception if timezone is invalid string
+          TZInfo::Timezone.get(task[:timezone])
+        rescue => e
+          Embulk.logger.error "'#{task[:timezone]}' is invalid timezone"
+          raise e
+        end
 
         columns = []
         task[:schema] = config.param(:columns, :array)
