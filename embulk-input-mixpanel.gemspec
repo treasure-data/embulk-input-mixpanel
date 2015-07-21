@@ -13,6 +13,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec)/})
   spec.require_paths = ["lib"]
 
+  spec.add_dependency 'httpclient'
   spec.add_development_dependency 'bundler', ['~> 1.0']
   spec.add_development_dependency 'rake', ['>= 10.0']
   spec.add_development_dependency 'embulk', ['>= 0.6.12', '< 1.0']
