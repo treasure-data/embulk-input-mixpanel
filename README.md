@@ -24,6 +24,9 @@ For API configuration, you should log in mixpanel website, and click "Account" a
 - **timezone**: project timezone(string, required)
 - **from_date**: From date to export (string, optional, default: Today)
 - **to_date**: To date to export (string, optional, default: Today)
+- **event**: The event or events to filter data (array, optional, default: nil)
+- **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
+- **bucket**:The data backet to filter data (string, optional, default: nil)
 
 ## Example
 
