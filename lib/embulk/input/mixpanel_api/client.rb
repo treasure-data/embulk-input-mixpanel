@@ -23,6 +23,7 @@ module Embulk
           params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
           params[:sig] = signature(params)
           response = httpclient.get(ENDPOINT_EXPORT, params)
+
           Enumerator.new do |y|
             response.body.lines.each do |json|
               y << JSON.parse(json)
