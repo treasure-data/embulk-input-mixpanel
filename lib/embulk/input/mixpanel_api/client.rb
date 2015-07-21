@@ -8,7 +8,7 @@ module Embulk
     module MixpanelApi
       class Client
         ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
-        TIMEOUT_SECONDS = 120
+        TIMEOUT_SECONDS = 3600
 
         attr_reader :api_key, :api_secret
 
@@ -19,10 +19,14 @@ module Embulk
 
         def export(params = {})
           # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
-          params[:api_key] = api_key
           params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
           params[:sig] = signature(params)
           response = httpclient.get(ENDPOINT_EXPORT, params)
+
+          if response.code >= 400
+            Embulk.logger.error response.body
+            return Enumerator.new{ }
+          end
 
           Enumerator.new do |y|
             response.body.lines.each do |json|
@@ -43,7 +47,12 @@ module Embulk
         end
 
         def httpclient
-          @client ||= HTTPClient.new
+          @client ||=
+            begin
+              client = HTTPClient.new
+              client.receive_timeout = TIMEOUT_SECONDS
+              client
+            end
         end
       end
     end

@@ -1,3 +1,4 @@
+require "tzinfo"
 require "embulk/input/mixpanel_api/client"
 
 module Embulk
@@ -6,18 +7,31 @@ module Embulk
     class Mixpanel < InputPlugin
       Plugin.register_input("mixpanel", self)
 
-      def self.transaction(config, &control)
-        # configuration code:
-        task = {
-          "property1" => config.param("property1", :string),
-          "property2" => config.param("property2", :integer, default: 0),
-        }
+      PREVIEW_RECORDS_COUNT = 30
 
-        columns = [
-          Column.new(0, "example", :string),
-          Column.new(1, "column", :long),
-          Column.new(2, "value", :double),
-        ]
+      def self.transaction(config, &control)
+        task = {}
+
+        task[:params] = config_to_export_params(config)
+        task[:api_key] = config.param(:api_key, :string)
+        task[:api_secret] = config.param(:api_secret, :string)
+        task[:timezone] = config.param(:timezone, :string)
+        begin
+          # raises exception if timezone is invalid string
+          TZInfo::Timezone.get(task[:timezone])
+        rescue => e
+          Embulk.logger.error "'#{task[:timezone]}' is invalid timezone"
+          raise e
+        end
+
+        columns = []
+        task[:schema] = config.param(:columns, :array)
+        task[:schema].each do |column|
+          name = column["name"]
+          type = column["type"].to_sym
+
+          columns << Column.new(nil, name, type, column["format"])
+        end
 
         resume(task, columns, 1, &control)
       end
@@ -47,14 +61,31 @@ module Embulk
       end
 
       def init
-        # initialization code:
-        @property1 = task["property1"]
-        @property2 = task["property2"]
+        @api_key = task[:api_key]
+        @api_secret = task[:api_secret]
+        @params = task[:params]
+        @timezone = task[:timezone]
+        @schema = task[:schema]
       end
 
       def run
-        page_builder.add(["example-value", 1, 0.1])
-        page_builder.add(["example-value", 2, 0.2])
+        client = MixpanelApi::Client.new(@api_key, @api_secret)
+        records = client.export(@params)
+        records = records.first(PREVIEW_RECORDS_COUNT) if preview?
+        records.each do |record|
+          values = @schema.map do |column|
+            case column["name"]
+            when "event"
+              record["event"]
+            when "time"
+              time = record["properties"]["time"]
+              adjust_timezone(time)
+            else
+              record["properties"][column["name"]]
+            end
+          end
+          page_builder.add(values)
+        end
         page_builder.finish
 
         commit_report = {}
@@ -62,6 +93,22 @@ module Embulk
       end
 
       private
+
+      def adjust_timezone(epoch)
+        # Adjust timezone offset to get UTC time
+        # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
+        tz = TZInfo::Timezone.get(@timezone)
+        offset = tz.period_for_local(epoch).offset.utc_offset
+        epoch - offset
+      end
+
+      def preview?
+        begin
+          org.embulk.spi.Exec.isPreview()
+        rescue java.lang.NullPointerException => e
+          false
+        end
+      end
 
       def self.config_to_export_params(config)
         {
