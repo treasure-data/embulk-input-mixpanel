@@ -30,19 +30,19 @@ module Embulk
       end
 
       def self.guess(config)
-        api_key = config.param(:api_key, :string)
-        client = MixpanelApi::Client.new(api_key, config.param(:api_secret, :string))
+        client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
         records = client.export(config_to_export_params(config))
         sample_records = records.first(10)
         properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
         columns = properties.map do |col|
-          {
+          result = {
             name: col.name,
             type: col.type,
-            format: col.format
           }
+          result[:format] = col.format if col.format
+          result
         end
-        columns.unshift({name: "event", type: "string"})
+        columns.unshift({name: "event", type: :string})
         return {"columns" => columns}
       end
 
