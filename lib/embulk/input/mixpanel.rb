@@ -73,14 +73,16 @@ module Embulk
         records = client.export(@params)
         records = records.first(PREVIEW_RECORDS_COUNT) if preview?
         records.each do |record|
-          values = @schema.collect do |column|
-            value = column["name"] == "event" ? record["event"] : record["properties"][column["name"]]
-            next value if column["name"] != "time"
-            # Adjust timezone offset to get UTC time
-            # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
-            tz = TZInfo::Timezone.get(@timezone)
-            offset = tz.period_for_local(value).offset.utc_offset
-            value - offset
+          values = @schema.map do |column|
+            case column["name"]
+            when "event"
+              record["event"]
+            when "time"
+              time = record["properties"]["time"]
+              adjust_timezone(time)
+            else
+              record["properties"][column["name"]]
+            end
           end
           page_builder.add(values)
         end
@@ -91,6 +93,14 @@ module Embulk
       end
 
       private
+
+      def adjust_timezone(epoch)
+        # Adjust timezone offset to get UTC time
+        # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
+        tz = TZInfo::Timezone.get(@timezone)
+        offset = tz.period_for_local(epoch).offset.utc_offset
+        epoch - offset
+      end
 
       def preview?
         begin
