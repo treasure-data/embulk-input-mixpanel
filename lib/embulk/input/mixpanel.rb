@@ -1,3 +1,5 @@
+require "embulk/input/mixpanel_api/client"
+
 module Embulk
   module Input
 
@@ -27,15 +29,22 @@ module Embulk
         return next_config_diff
       end
 
-      # TODO
-      #def self.guess(config)
-      #  sample_records = [
-      #    {"example"=>"a", "column"=>1, "value"=>0.1},
-      #    {"example"=>"a", "column"=>2, "value"=>0.2},
-      #  ]
-      #  columns = Guess::SchemaGuess.from_hash_records(sample_records)
-      #  return {"columns" => columns}
-      #end
+      def self.guess(config)
+        api_key = config.param(:api_key, :string)
+        client = MixpanelApi::Client.new(api_key, config.param(:api_secret, :string))
+        records = client.export(config_to_export_params(config))
+        sample_records = records.first(10)
+        properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
+        columns = properties.map do |col|
+          {
+            name: col.name,
+            type: col.type,
+            format: col.format
+          }
+        end
+        columns.unshift({name: "event", type: "string"})
+        return {"columns" => columns}
+      end
 
       def init
         # initialization code:
@@ -50,6 +59,19 @@ module Embulk
 
         commit_report = {}
         return commit_report
+      end
+
+      private
+
+      def self.config_to_export_params(config)
+        {
+          api_key: config.param(:api_key, :string),
+          from_date: config.param(:from_date, :string),
+          to_date: config.param(:to_date, :string),
+          event: config.param(:event, :array, default: nil),
+          where: config.param(:where, :string, default: nil),
+          bucket: config.param(:bucket, :string, default: nil),
+        }
       end
     end
 
