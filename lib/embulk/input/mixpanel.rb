@@ -12,10 +12,11 @@ module Embulk
       def self.transaction(config, &control)
         task = {}
 
+        task[:params] = config_to_export_params(config)
         task[:api_key] = config.param(:api_key, :string)
         task[:api_secret] = config.param(:api_secret, :string)
         task[:timezone] = config.param(:timezone, :string)
-        task[:params] = config_to_export_params(config)
+        TZInfo::Timezone.get(task[:timezone]) # raises exception if timezone is invalid string
 
         columns = []
         task[:schema] = config.param(:columns, :array)
@@ -69,9 +70,11 @@ module Embulk
           values = @schema.collect do |column|
             value = column["name"] == "event" ? record["event"] : record["properties"][column["name"]]
             next value if column["name"] != "time"
+            # Adjust timezone offset to get UTC time
+            # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
             tz = TZInfo::Timezone.get(@timezone)
             offset = tz.period_for_local(value).offset.utc_offset
-            value + offset
+            value - offset
           end
           page_builder.add(values)
         end

@@ -18,6 +18,84 @@ module Embulk
         assert_equal(expected, actual)
       end
 
+      class RunTest < self
+        def setup
+          httpclient = HTTPClient.new
+          httpclient.test_loopback_response << records.map{|record| JSON.dump(record)}.join("\n")
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).httpclient { httpclient }
+          end
+          @page_builder = Object.new
+          @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+        end
+
+        def test_preview
+          stub(@plugin).preview? { true }
+          mock(@page_builder).add(anything).times(Mixpanel::PREVIEW_RECORDS_COUNT)
+          mock(@page_builder).finish
+
+          @plugin.run
+        end
+
+        def test_run
+          stub(@plugin).preview? { false }
+          mock(@page_builder).add(anything).times(records.length)
+          mock(@page_builder).finish
+
+          @plugin.run
+        end
+
+        def test_run_timezone
+          stub(@plugin).preview? { false }
+          adjusted = record_epoch - timezone_offset_seconds
+          mock(@page_builder).add(["FOO", adjusted]).times(records.length)
+          mock(@page_builder).finish
+
+          @plugin.run
+        end
+
+        def test_invalid_timezone
+          assert_raise(TZInfo::InvalidTimezoneIdentifier) do
+            Mixpanel.new(task.merge(timezone: "Asia/Tokyooooooooo"), nil, nil, @page_builder).run
+          end
+        end
+
+        private
+
+        def task
+          {
+            api_key: "key",
+            api_secret: "secret",
+            timezone: "Asia/Tokyo",
+            schema: [
+              {"name" => "foo", "type" => "long"},
+              {"name" => "time", "type" => "long"},
+            ],
+            params: Mixpanel.config_to_export_params(embulk_config),
+          }
+        end
+
+        def record_epoch
+          1234567890
+        end
+
+        def timezone_offset_seconds
+          60 * 60 * 9 # Asia/Tokyo
+        end
+
+        def records
+          [
+            {
+              event: "event",
+              properties: {
+                foo: "FOO",
+                time: record_epoch,
+              }
+            },
+          ] * Mixpanel::PREVIEW_RECORDS_COUNT * 2
+        end
+      end
+
       private
 
       def dummy_jsonl
