@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/treasure-data/embulk-input-mixpanel.svg?branch=master)](https://travis-ci.org/treasure-data/embulk-input-mixpanel)
+[![Code Climate](https://codeclimate.com/github/treasure-data/embulk-input-mixpanel/badges/gpa.svg)](https://codeclimate.com/github/treasure-data/embulk-input-mixpanel)
+[![Test Coverage](https://codeclimate.com/github/treasure-data/embulk-input-mixpanel/badges/coverage.svg)](https://codeclimate.com/github/treasure-data/embulk-input-mixpanel/coverage)
 
 # Mixpanel input plugin for Embulk
 
