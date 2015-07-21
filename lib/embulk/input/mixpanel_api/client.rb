@@ -37,8 +37,8 @@ module Embulk
             value = params[key] || params[key.to_sym]
             next sig unless value
             sig << "#{key}=#{URI.encode_www_form_component(value)}"
-          end + api_secret
-          Digest::MD5.hexdigest(signature) 
+          end
+          Digest::MD5.hexdigest(signature + api_secret)
         end
 
         def httpclient

@@ -42,7 +42,7 @@ module Embulk
           result[:format] = col.format if col.format
           result
         end
-        columns.unshift({name: "event", type: :string})
+        columns.unshift(name: "event", type: :string)
         return {"columns" => columns}
       end
 
