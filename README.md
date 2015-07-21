@@ -19,14 +19,14 @@ Required Embulk version >= 0.6.16.
 
 ### How to get API configuration
 
-This plugin uses API key and API token for target project. Before you make your config.yml, you should get API key and API token in mixpanel website.
+This plugin uses API key and API secret for target project. Before you make your config.yml, you should get API key and API secret in mixpanel website.
 
-For API configuration, you should log in mixpanel website, and click "Account" at the header. When you select "Projects" panel, you can get "API Key" and "API Token" for each project.
+For API configuration, you should log in mixpanel website, and click "Account" at the header. When you select "Projects" panel, you can get "API Key" and "API Secret" for each project.
 
 ### Configuration
 
 - **api_key**: project API Key (string, required)
-- **api_token**: project API Token (string, required)
+- **api_secret**: project API Secret (string, required)
 - **timezone**: project timezone(string, required)
 - **from_date**: From date to export (string, optional, default: Today)
 - **to_date**: To date to export (string, optional, default: Today)
@@ -40,7 +40,7 @@ For API configuration, you should log in mixpanel website, and click "Account" a
 in:
   type: mixpanel
   api_key: "API_KEY"
-  api_token: "API_TOKEN"
+  api_secret: "API_SECRET"
   timezone: "US/Pacific"
   from_date: "2015-07-19"
   to_date: "2015-07-20"
