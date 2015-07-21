@@ -8,6 +8,8 @@ TODO: Write short description here and embulk-input-mixpanel.gemspec file.
 
 ## Overview
 
+Required Embulk version >= 0.6.16.
+
 * **Plugin type**: input
 * **Resume supported**: yes
 * **Cleanup supported**: yes
