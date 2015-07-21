@@ -25,7 +25,7 @@ module Embulk
 
           if response.code >= 400
             Embulk.logger.error response.body
-            return Enumerator.new{|y| }
+            return Enumerator.new{ }
           end
 
           Enumerator.new do |y|
@@ -37,7 +37,7 @@ module Embulk
 
         def signature(params)
           # https://mixpanel.com/docs/api-documentation/data-export-api#auth-implementation
-          sorted_keys = params.keys.map(&:to_s).sort.uniq
+          sorted_keys = params.keys.map(&:to_s).sort
           signature = sorted_keys.inject("") do |sig, key|
             value = params[key] || params[key.to_sym]
             next sig unless value
