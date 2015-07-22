@@ -116,9 +116,9 @@ module Embulk
           api_key: config.param(:api_key, :string),
           from_date: config.param(:from_date, :string),
           to_date: config.param(:to_date, :string),
-          event: config.param(:event, :array, default: nil),
-          where: config.param(:where, :string, default: nil),
-          bucket: config.param(:bucket, :string, default: nil),
+          event: config.param(:event, :array, default: nil).to_json,
+          where: config.param(:where, :string, default: nil).to_json,
+          bucket: config.param(:bucket, :string, default: nil).to_json,
         }
       end
     end

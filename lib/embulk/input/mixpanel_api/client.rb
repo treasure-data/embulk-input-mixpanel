@@ -41,8 +41,9 @@ module Embulk
           signature = sorted_keys.inject("") do |sig, key|
             value = params[key] || params[key.to_sym]
             next sig unless value
-            sig << "#{key}=#{URI.encode_www_form_component(value)}"
+            sig << "#{key}=#{value}"
           end
+
           Digest::MD5.hexdigest(signature + api_secret)
         end
 
@@ -51,6 +52,7 @@ module Embulk
             begin
               client = HTTPClient.new
               client.receive_timeout = TIMEOUT_SECONDS
+              client.default_header = {Accept: "application/json; charset=UTF-8"}
               client
             end
         end
