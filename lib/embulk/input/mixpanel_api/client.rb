@@ -10,8 +10,6 @@ module Embulk
         ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
 
-        attr_reader :api_key, :api_secret
-
         def initialize(api_key, api_secret)
           @api_key = api_key
           @api_secret = api_secret
@@ -44,7 +42,7 @@ module Embulk
             sig << "#{key}=#{value}"
           end
 
-          Digest::MD5.hexdigest(signature + api_secret)
+          Digest::MD5.hexdigest(signature + @api_secret)
         end
 
         def httpclient
