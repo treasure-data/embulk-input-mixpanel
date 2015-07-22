@@ -13,7 +13,7 @@ module Embulk
       def self.transaction(config, &control)
         task = {}
 
-        task[:params] = config_to_export_params(config)
+        task[:params] = export_params(config)
         task[:api_key] = config.param(:api_key, :string)
         task[:api_secret] = config.param(:api_secret, :string)
         task[:timezone] = config.param(:timezone, :string)
@@ -46,7 +46,7 @@ module Embulk
 
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
-        records = client.export(config_to_export_params(config))
+        records = client.export(export_params(config))
         sample_records = records.first(GUESS_RECORDS_COUNT)
         properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
         columns = properties.map do |col|
@@ -111,7 +111,7 @@ module Embulk
         end
       end
 
-      def self.config_to_export_params(config)
+      def self.export_params(config)
         {
           api_key: config.param(:api_key, :string),
           from_date: config.param(:from_date, :string),

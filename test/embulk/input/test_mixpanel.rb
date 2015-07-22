@@ -71,7 +71,7 @@ module Embulk
               {"name" => "foo", "type" => "long"},
               {"name" => "time", "type" => "long"},
             ],
-            params: Mixpanel.config_to_export_params(embulk_config),
+            params: Mixpanel.export_params(embulk_config),
           }
         end
 
