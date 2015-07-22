@@ -8,6 +8,7 @@ module Embulk
       Plugin.register_input("mixpanel", self)
 
       PREVIEW_RECORDS_COUNT = 30
+      GUESS_RECORDS_COUNT = 10
 
       def self.transaction(config, &control)
         task = {}
@@ -46,7 +47,7 @@ module Embulk
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
         records = client.export(config_to_export_params(config))
-        sample_records = records.first(10)
+        sample_records = records.first(GUESS_RECORDS_COUNT)
         properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
         columns = properties.map do |col|
           result = {
