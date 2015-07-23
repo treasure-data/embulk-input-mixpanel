@@ -33,6 +33,8 @@ module Embulk
           end
         end
 
+        private
+
         def signature(params)
           # https://mixpanel.com/docs/api-documentation/data-export-api#auth-implementation
           sorted_keys = params.keys.map(&:to_s).sort
