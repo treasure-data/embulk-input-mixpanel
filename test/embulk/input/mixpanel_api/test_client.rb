@@ -12,7 +12,7 @@ module Embulk
         end
 
         # NOTE: Client#signature is private method but this value
-        # can't be checked via other methods.a
+        # can't be checked via other methods.
         def test_signature
           now = Time.parse("2015-07-22 00:00:00")
           stub(Time).now { now }
