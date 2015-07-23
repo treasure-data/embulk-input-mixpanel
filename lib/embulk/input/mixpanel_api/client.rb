@@ -10,8 +10,6 @@ module Embulk
         ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
 
-        attr_reader :api_key, :api_secret
-
         def initialize(api_key, api_secret)
           @api_key = api_key
           @api_secret = api_secret
@@ -35,15 +33,18 @@ module Embulk
           end
         end
 
+        private
+
         def signature(params)
           # https://mixpanel.com/docs/api-documentation/data-export-api#auth-implementation
           sorted_keys = params.keys.map(&:to_s).sort
           signature = sorted_keys.inject("") do |sig, key|
             value = params[key] || params[key.to_sym]
             next sig unless value
-            sig << "#{key}=#{URI.encode_www_form_component(value)}"
+            sig << "#{key}=#{value}"
           end
-          Digest::MD5.hexdigest(signature + api_secret)
+
+          Digest::MD5.hexdigest(signature + @api_secret)
         end
 
         def httpclient
@@ -51,6 +52,7 @@ module Embulk
             begin
               client = HTTPClient.new
               client.receive_timeout = TIMEOUT_SECONDS
+              client.default_header = {Accept: "application/json; charset=UTF-8"}
               client
             end
         end
