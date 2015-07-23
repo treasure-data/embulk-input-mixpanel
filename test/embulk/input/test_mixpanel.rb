@@ -37,7 +37,7 @@ module Embulk
           from_date: "2015-01-01",
           to_date: "2015-03-02",
           event: "[\"ViewHoge\",\"ViewFuga\"]",
-          where: "properties[\"$os\"] == \"Windows\"",
+          where: 'properties["$os"] == "Windows"',
           bucket: "987",
         }
         actual = Mixpanel.export_params(config)
