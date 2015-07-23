@@ -18,6 +18,33 @@ module Embulk
         assert_equal(expected, actual)
       end
 
+      def test_export_params
+        config_params = [
+          :type, "mixpanel",
+          :api_key, "key",
+          :api_secret, "SECRET",
+          :from_date, "2015-01-01",
+          :to_date, "2015-03-02",
+          :event, ["ViewHoge", "ViewFuga"],
+          :where, 'properties["$os"] == "Windows"',
+          :bucket, "987",
+        ]
+
+        config = DataSource[*config_params]
+
+        expected = {
+          api_key: "key",
+          from_date: "2015-01-01",
+          to_date: "2015-03-02",
+          event: "[\"ViewHoge\",\"ViewFuga\"]",
+          where: "properties[\"$os\"] == \"Windows\"",
+          bucket: "987",
+        }
+        actual = Mixpanel.export_params(config)
+
+        assert_equal(expected, actual)
+      end
+
       class RunTest < self
         def setup
           httpclient = HTTPClient.new
