@@ -1,4 +1,5 @@
 require "embulk/input/mixpanel_api/client"
+
 module Embulk
   module Input
     module MixpanelApi
