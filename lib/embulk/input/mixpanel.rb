@@ -8,6 +8,7 @@ module Embulk
       Plugin.register_input("mixpanel", self)
 
       GUESS_RECORDS_COUNT = 10
+      SLICE_DAYS_COUNT = 7
 
       def self.transaction(config, &control)
         task = {}
@@ -56,7 +57,7 @@ module Embulk
         params = export_params(config)
         params = params.merge(
           from_date: from_date,
-          to_date: (Date.parse(from_date) + 6).to_s
+          to_date: (Date.parse(from_date) + SLICE_DAYS_COUNT - 1).to_s
         )
 
         records = client.export(params)
@@ -85,7 +86,7 @@ module Embulk
 
       def run
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        @dates.each_slice(7) do |dates| # TODO magic number
+        @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           from_date = dates.first
           to_date = dates.last
           Embulk.logger.info "#{from_date.to_s} - #{to_date.to_s}"
