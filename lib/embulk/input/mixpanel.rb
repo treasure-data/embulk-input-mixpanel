@@ -7,16 +7,21 @@ module Embulk
     class Mixpanel < InputPlugin
       Plugin.register_input("mixpanel", self)
 
-      PREVIEW_RECORDS_COUNT = 30
       GUESS_RECORDS_COUNT = 10
 
       def self.transaction(config, &control)
         task = {}
 
         task[:params] = export_params(config)
+
+        from_date = config.param(:from_date, :string)
+        to_date = config.param(:to_date, :string)
+        task[:dates] = (Date.parse(from_date)..Date.parse(to_date)).to_a
+
         task[:api_key] = config.param(:api_key, :string)
         task[:api_secret] = config.param(:api_secret, :string)
         task[:timezone] = config.param(:timezone, :string)
+
         begin
           # raises exception if timezone is invalid string
           TZInfo::Timezone.get(task[:timezone])
@@ -67,26 +72,40 @@ module Embulk
         @params = task[:params]
         @timezone = task[:timezone]
         @schema = task[:schema]
+        @dates = task[:dates]
       end
 
       def run
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        records = client.export(@params)
-        records = records.first(PREVIEW_RECORDS_COUNT) if preview?
-        records.each do |record|
-          values = @schema.map do |column|
-            case column["name"]
-            when "event"
-              record["event"]
-            when "time"
-              time = record["properties"]["time"]
-              adjust_timezone(time)
-            else
-              record["properties"][column["name"]]
+        @dates.each_slice(7) do |dates| # TODO magic number
+          from_date = dates.first
+          to_date = dates.last
+          Embulk.logger.info "#{from_date.to_s} - #{to_date.to_s}"
+
+          params = @params.dup
+          params["from_date"] = from_date.to_s
+          params["to_date"] = to_date.to_s
+
+          records = client.export(params)
+
+          records.each.with_index do |record, i|
+            values = @schema.map do |column|
+              case column["name"]
+              when "event"
+                record["event"]
+              when "time"
+                time = record["properties"]["time"]
+                adjust_timezone(time)
+              else
+                record["properties"][column["name"]]
+              end
             end
+            page_builder.add(values)
           end
-          page_builder.add(values)
+
+          break if preview?
         end
+
         page_builder.finish
 
         commit_report = {}
@@ -117,8 +136,6 @@ module Embulk
 
         {
           api_key: config.param(:api_key, :string),
-          from_date: config.param(:from_date, :string),
-          to_date: config.param(:to_date, :string),
           event: event,
           where: config.param(:where, :string, default: nil),
           bucket: config.param(:bucket, :string, default: nil),
