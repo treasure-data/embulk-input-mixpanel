@@ -51,7 +51,15 @@ module Embulk
 
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
-        records = client.export(export_params(config))
+
+        from_date = config.param(:from_date, :string)
+        params = export_params(config)
+        params = params.merge(
+          from_date: from_date,
+          to_date: (Date.parse(from_date) + 6).to_s
+        )
+
+        records = client.export(params)
         sample_records = records.first(GUESS_RECORDS_COUNT)
         properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
         columns = properties.map do |col|
