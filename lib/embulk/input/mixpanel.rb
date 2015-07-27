@@ -99,7 +99,7 @@ module Embulk
         # Adjust timezone offset to get UTC time
         # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
         tz = TZInfo::Timezone.get(@timezone)
-        offset = tz.period_for_local(epoch).offset.utc_offset
+        offset = tz.period_for_local(epoch, true).offset.utc_offset
         epoch - offset
       end
 
