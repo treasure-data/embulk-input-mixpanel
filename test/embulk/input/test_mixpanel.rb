@@ -56,29 +56,49 @@ module Embulk
         assert_equal(expected, actual)
       end
 
-      def test_transaction
-        control = proc {} # dummy
-        schema = task[:schema]
+      class TransactionTest < self
+        def test_valid_timezone
+          timezone = "Asia/Tokyo"
+          mock(Mixpanel).resume(transaction_task(timezone), columns, 1, &control)
 
-        transaction_task = {
-          params: task[:params],
-          dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).map {|date| date.to_s},
-          api_key: API_KEY,
-          api_secret: API_SECRET,
-          timezone: "Asia/Tokyo",
-          schema: task[:schema],
-        }
-
-        columns = schema.map do |col|
-          Column.new(nil, col["name"], col["type"].to_sym)
+          Mixpanel.transaction(transaction_config(timezone), &control)
         end
 
-        mock(Mixpanel).resume(transaction_task, columns, 1, &control)
+        def test_invalid_timezone
+          timezone = "Asia/Tokyoooooo"
 
-        transaction_config = config.merge(timezone: "Asia/Tokyo", columns: task[:schema])
-        transaction_config = DataSource[*transaction_config.to_a.flatten(1)]
+          assert_raise(TZInfo::InvalidTimezoneIdentifier) do
+            Mixpanel.transaction(transaction_config(timezone), &control)
+          end
+        end
 
-        Mixpanel.transaction(transaction_config, &control)
+        def control
+          proc {} # dummy
+        end
+
+        def transaction_config(timezone)
+          _config = config.merge(
+            timezone: timezone,
+            columns: schema,
+          )
+          DataSource[*_config.to_a.flatten(1)]
+        end
+
+        def transaction_task(timezone)
+          task.merge(
+            dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).map {|date| date.to_s},
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            timezone: timezone,
+            schema: schema
+          )
+        end
+
+        def columns
+          schema.map do |col|
+            Column.new(nil, col["name"], col["type"].to_sym)
+          end
+        end
       end
 
       def test_export_params
@@ -139,12 +159,6 @@ module Embulk
           @plugin.run
         end
 
-        def test_invalid_timezone
-          assert_raise(TZInfo::InvalidTimezoneIdentifier) do
-            Mixpanel.new(task.merge(timezone: "Asia/Tokyooooooooo"), nil, nil, @page_builder).run
-          end
-        end
-
         private
 
         def timezone_offset_seconds
@@ -154,16 +168,20 @@ module Embulk
 
       private
 
+      def schema
+        [
+          {"name" => "foo", "type" => "long"},
+          {"name" => "time", "type" => "long"},
+          {"name" => "event", "type" => "string"},
+        ]
+      end
+
       def task
         {
           api_key: API_KEY,
           api_secret: API_SECRET,
           timezone: "Asia/Tokyo",
-          schema: [
-            {"name" => "foo", "type" => "long"},
-            {"name" => "time", "type" => "long"},
-            {"name" => "event", "type" => "string"},
-          ],
+          schema: schema,
           dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
           params: Mixpanel.export_params(embulk_config),
         }
