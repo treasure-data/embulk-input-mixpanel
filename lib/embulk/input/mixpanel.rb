@@ -17,7 +17,7 @@ module Embulk
 
         from_date = config.param(:from_date, :string)
         to_date = config.param(:to_date, :string)
-        dates = (Date.parse(from_date)..Date.parse(to_date))
+        dates = Date.parse(from_date)..Date.parse(to_date)
         task[:dates] = dates.map {|date| date.to_s}
 
         task[:api_key] = config.param(:api_key, :string)
