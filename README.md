@@ -23,6 +23,12 @@ This plugin uses API key and API secret for target project. Before you make your
 
 For API configuration, you should log in mixpanel website, and click "Account" at the header. When you select "Projects" panel, you can get "API Key" and "API Secret" for each project.
 
+### How to get project's timezone
+
+This plugin uses project's timezone to adjust timestamp to UTC.
+
+To get it, you should log in mixpanel website, and click gear icon at the lower left. Then an opened dialog shows timezone at "Timezone" column in "Management" tab.
+
 ### Configuration
 
 - **api_key**: project API Key (string, required)
