@@ -95,9 +95,10 @@ module Embulk
           to_date = dates.last
           Embulk.logger.info "Fetching data from #{from_date} to #{to_date} ..."
 
-          params = @params.dup
-          params["from_date"] = from_date
-          params["to_date"] = to_date
+          params = @params.merge(
+            "from_date" => from_date,
+            "to_date" => to_date
+          )
 
           records = client.export(params)
 
