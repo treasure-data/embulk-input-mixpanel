@@ -8,6 +8,10 @@ module Embulk
       Plugin.register_input("mixpanel", self)
 
       GUESS_RECORDS_COUNT = 10
+
+      # NOTE: It takes long time to fetch data between from_date to
+      # to_date by one API request. So this plugin fetches data
+      # between each 7 (SLICE_DAYS_COUNT) days.
       SLICE_DAYS_COUNT = 7
 
       def self.transaction(config, &control)
