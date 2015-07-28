@@ -7,16 +7,27 @@ module Embulk
     class Mixpanel < InputPlugin
       Plugin.register_input("mixpanel", self)
 
-      PREVIEW_RECORDS_COUNT = 30
       GUESS_RECORDS_COUNT = 10
+
+      # NOTE: It takes long time to fetch data between from_date to
+      # to_date by one API request. So this plugin fetches data
+      # between each 7 (SLICE_DAYS_COUNT) days.
+      SLICE_DAYS_COUNT = 7
 
       def self.transaction(config, &control)
         task = {}
 
         task[:params] = export_params(config)
+
+        from_date = config.param(:from_date, :string)
+        to_date = config.param(:to_date, :string)
+        dates = Date.parse(from_date)..Date.parse(to_date)
+        task[:dates] = dates.map {|date| date.to_s}
+
         task[:api_key] = config.param(:api_key, :string)
         task[:api_secret] = config.param(:api_secret, :string)
         task[:timezone] = config.param(:timezone, :string)
+
         begin
           # raises exception if timezone is invalid string
           TZInfo::Timezone.get(task[:timezone])
@@ -46,7 +57,18 @@ module Embulk
 
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
-        records = client.export(export_params(config))
+
+        from_date = config.param(:from_date, :string)
+        # NOTE: It should have 7 days beteen from_date and to_date
+        to_date = (Date.parse(from_date) + SLICE_DAYS_COUNT - 1).to_s
+
+        params = export_params(config)
+        params = params.merge(
+          from_date: from_date,
+          to_date: to_date,
+        )
+
+        records = client.export(params)
         sample_records = records.first(GUESS_RECORDS_COUNT)
         properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
         columns = properties.map do |col|
@@ -67,26 +89,41 @@ module Embulk
         @params = task[:params]
         @timezone = task[:timezone]
         @schema = task[:schema]
+        @dates = task[:dates]
       end
 
       def run
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        records = client.export(@params)
-        records = records.first(PREVIEW_RECORDS_COUNT) if preview?
-        records.each do |record|
-          values = @schema.map do |column|
-            case column["name"]
-            when "event"
-              record["event"]
-            when "time"
-              time = record["properties"]["time"]
-              adjust_timezone(time)
-            else
-              record["properties"][column["name"]]
+        @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
+          from_date = dates.first
+          to_date = dates.last
+          Embulk.logger.info "Fetching data from #{from_date} to #{to_date} ..."
+
+          params = @params.merge(
+            "from_date" => from_date,
+            "to_date" => to_date
+          )
+
+          records = client.export(params)
+
+          records.each do |record|
+            values = @schema.map do |column|
+              case column["name"]
+              when "event"
+                record["event"]
+              when "time"
+                time = record["properties"]["time"]
+                adjust_timezone(time)
+              else
+                record["properties"][column["name"]]
+              end
             end
+            page_builder.add(values)
           end
-          page_builder.add(values)
+
+          break if preview?
         end
+
         page_builder.finish
 
         commit_report = {}
@@ -99,7 +136,7 @@ module Embulk
         # Adjust timezone offset to get UTC time
         # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
         tz = TZInfo::Timezone.get(@timezone)
-        offset = tz.period_for_local(epoch).offset.utc_offset
+        offset = tz.period_for_local(epoch, true).offset.utc_offset
         epoch - offset
       end
 
@@ -117,8 +154,6 @@ module Embulk
 
         {
           api_key: config.param(:api_key, :string),
-          from_date: config.param(:from_date, :string),
-          to_date: config.param(:to_date, :string),
           event: event,
           where: config.param(:where, :string, default: nil),
           bucket: config.param(:bucket, :string, default: nil),

@@ -5,15 +5,53 @@ require "json"
 module Embulk
   module Input
     class MixpanelTest < Test::Unit::TestCase
+      API_KEY = "api_key".freeze
+      API_SECRET = "api_secret".freeze
+      FROM_DATE = "2015-02-22".freeze
+      TO_DATE = "2015-03-02".freeze
+
+      DURATIONS = [
+        {from_date: FROM_DATE, to_date: "2015-02-28"}, # It has 7 days between 2015-02-22 and 2015-02-28
+        {from_date: "2015-03-01", to_date: TO_DATE},
+      ]
+
       def setup
-        httpclient = HTTPClient.new
-        httpclient.test_loopback_response << dummy_jsonl
+        setup_client
+        setup_logger
+      end
+
+      def setup_client
+        params = {
+          api_key: API_KEY,
+          event: nil,
+          where: nil,
+          bucket: nil,
+        }
+
         any_instance_of(MixpanelApi::Client) do |klass|
-          stub(klass).httpclient { httpclient }
+          DURATIONS.each do |duration|
+            from_date = duration[:from_date]
+            to_date = duration[:to_date]
+
+            stub(klass).export(params) { records }
+          end
         end
       end
 
+      def setup_logger
+        stub(Embulk).logger { ::Logger.new(IO::NULL) }
+      end
+
       def test_guess
+        expected = {
+          "columns" => [
+            {name: "event", type: :string},
+            {name: "foo", type: :string},
+            {name: "time", type: :long},
+            {name: "int", type: :long},
+          ]
+        }
+
         actual = Mixpanel.guess(embulk_config)
         assert_equal(expected, actual)
       end
@@ -21,10 +59,10 @@ module Embulk
       def test_export_params
         config_params = [
           :type, "mixpanel",
-          :api_key, "key",
-          :api_secret, "SECRET",
-          :from_date, "2015-01-01",
-          :to_date, "2015-03-02",
+          :api_key, API_KEY,
+          :api_secret, API_SECRET,
+          :from_date, FROM_DATE,
+          :to_date, TO_DATE,
           :event, ["ViewHoge", "ViewFuga"],
           :where, 'properties["$os"] == "Windows"',
           :bucket, "987",
@@ -33,9 +71,7 @@ module Embulk
         config = DataSource[*config_params]
 
         expected = {
-          api_key: "key",
-          from_date: "2015-01-01",
-          to_date: "2015-03-02",
+          api_key: API_KEY,
           event: "[\"ViewHoge\",\"ViewFuga\"]",
           where: 'properties["$os"] == "Windows"',
           bucket: "987",
@@ -47,18 +83,15 @@ module Embulk
 
       class RunTest < self
         def setup
-          httpclient = HTTPClient.new
-          httpclient.test_loopback_response << records.map{|record| JSON.dump(record)}.join("\n")
-          any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).httpclient { httpclient }
-          end
+          super
+
           @page_builder = Object.new
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
         end
 
         def test_preview
           stub(@plugin).preview? { true }
-          mock(@page_builder).add(anything).times(Mixpanel::PREVIEW_RECORDS_COUNT)
+          mock(@page_builder).add(anything).times(records.length)
           mock(@page_builder).finish
 
           @plugin.run
@@ -66,7 +99,7 @@ module Embulk
 
         def test_run
           stub(@plugin).preview? { false }
-          mock(@page_builder).add(anything).times(records.length)
+          mock(@page_builder).add(anything).times(records.length * 2)
           mock(@page_builder).finish
 
           @plugin.run
@@ -75,7 +108,7 @@ module Embulk
         def test_timezone
           stub(@plugin).preview? { false }
           adjusted = record_epoch - timezone_offset_seconds
-          mock(@page_builder).add(["FOO", adjusted]).times(records.length)
+          mock(@page_builder).add(["FOO", adjusted]).times(records.length * 2)
           mock(@page_builder).finish
 
           @plugin.run
@@ -91,84 +124,51 @@ module Embulk
 
         def task
           {
-            api_key: "key",
-            api_secret: "secret",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
             timezone: "Asia/Tokyo",
             schema: [
               {"name" => "foo", "type" => "long"},
               {"name" => "time", "type" => "long"},
             ],
+            dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
             params: Mixpanel.export_params(embulk_config),
           }
-        end
-
-        def record_epoch
-          1234567890
         end
 
         def timezone_offset_seconds
           60 * 60 * 9 # Asia/Tokyo
         end
-
-        def records
-          [
-            {
-              event: "event",
-              properties: {
-                foo: "FOO",
-                time: record_epoch,
-              }
-            },
-          ] * Mixpanel::PREVIEW_RECORDS_COUNT * 2
-        end
       end
 
       private
 
-      def dummy_jsonl
-        json1 = JSON.dump({
-          event: "event",
-          properties: {
-            foo: "FOO",
-            bar: "2000-01-01 11:11:11",
-            int: 42
-          }
-        })
-        json2 = JSON.dump({
-          event: "event2",
-          properties: {
-            foo: "fooooooooo",
-            bar: "1988-12-01 12:11:11",
-            int: 1
-          }
-        })
+      def records
+        [
+          {
+            "event" => "event",
+            "properties" => {
+              "foo" => "FOO",
+              "time" => record_epoch,
+              "int" => 42,
+            }
+          },
+        ] * 30
+      end
 
-        [json1, json2].join("\n")
+      def record_epoch
+        1234567890
       end
 
       def embulk_config
-        DataSource[*config.to_a.flatten(1)]
-      end
-
-      def config
-        {
+        config = {
           type: "mixpanel",
-          api_key: "key",
-          api_secret: "SECRET",
-          from_date: "2015-01-01",
-          to_date: "2015-03-02",
+          api_key: API_KEY,
+          api_secret: API_SECRET,
+          from_date: FROM_DATE,
+          to_date: TO_DATE,
         }
-      end
-
-      def expected
-        {
-          "columns" => [
-            {name: "event", type: :string},
-            {name: "foo", type: :string},
-            {name: "bar", format: "%Y-%m-%d %H:%M:%S", type: :timestamp},
-            {name: "int", type: :long},
-          ]
-        }
+        DataSource[*config.to_a.flatten(1)]
       end
     end
   end
