@@ -54,10 +54,13 @@ module Embulk
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
 
         from_date = config.param(:from_date, :string)
+        # NOTE: It should have 7 days beteen from_date and to_date
+        to_date = (Date.parse(from_date) + SLICE_DAYS_COUNT - 1).to_s
+
         params = export_params(config)
         params = params.merge(
           from_date: from_date,
-          to_date: (Date.parse(from_date) + SLICE_DAYS_COUNT - 1).to_s
+          to_date: to_date,
         )
 
         records = client.export(params)
