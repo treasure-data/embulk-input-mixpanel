@@ -102,7 +102,7 @@ module Embulk
 
           records = client.export(params)
 
-          records.each.with_index do |record, i|
+          records.each do |record|
             values = @schema.map do |column|
               case column["name"]
               when "event"
