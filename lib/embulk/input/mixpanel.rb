@@ -89,7 +89,7 @@ module Embulk
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           from_date = dates.first
           to_date = dates.last
-          Embulk.logger.info "#{from_date.to_s} - #{to_date.to_s}"
+          Embulk.logger.info "Fetching data from #{from_date.to_s} to #{to_date.to_s} ..."
 
           params = @params.dup
           params["from_date"] = from_date.to_s
