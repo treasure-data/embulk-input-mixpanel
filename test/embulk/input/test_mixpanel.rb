@@ -56,6 +56,31 @@ module Embulk
         assert_equal(expected, actual)
       end
 
+      def test_transaction
+        control = proc {} # dummy
+        schema = task[:schema]
+
+        transaction_task = {
+          params: task[:params],
+          dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).map {|date| date.to_s},
+          api_key: API_KEY,
+          api_secret: API_SECRET,
+          timezone: "Asia/Tokyo",
+          schema: task[:schema],
+        }
+
+        columns = schema.map do |col|
+          Column.new(nil, col["name"], col["type"].to_sym)
+        end
+
+        mock(Mixpanel).resume(transaction_task, columns, 1, &control)
+
+        transaction_config = config.merge(timezone: "Asia/Tokyo", columns: task[:schema])
+        transaction_config = DataSource[*transaction_config.to_a.flatten(1)]
+
+        Mixpanel.transaction(transaction_config, &control)
+      end
+
       def test_export_params
         config_params = [
           :type, "mixpanel",
@@ -122,26 +147,26 @@ module Embulk
 
         private
 
-        def task
-          {
-            api_key: API_KEY,
-            api_secret: API_SECRET,
-            timezone: "Asia/Tokyo",
-            schema: [
-              {"name" => "foo", "type" => "long"},
-              {"name" => "time", "type" => "long"},
-            ],
-            dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
-            params: Mixpanel.export_params(embulk_config),
-          }
-        end
-
         def timezone_offset_seconds
           60 * 60 * 9 # Asia/Tokyo
         end
       end
 
       private
+
+      def task
+        {
+          api_key: API_KEY,
+          api_secret: API_SECRET,
+          timezone: "Asia/Tokyo",
+          schema: [
+            {"name" => "foo", "type" => "long"},
+            {"name" => "time", "type" => "long"},
+          ],
+          dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
+          params: Mixpanel.export_params(embulk_config),
+        }
+      end
 
       def records
         [
@@ -160,14 +185,17 @@ module Embulk
         1234567890
       end
 
-      def embulk_config
-        config = {
+      def config
+        {
           type: "mixpanel",
           api_key: API_KEY,
           api_secret: API_SECRET,
           from_date: FROM_DATE,
           to_date: TO_DATE,
         }
+      end
+
+      def embulk_config
         DataSource[*config.to_a.flatten(1)]
       end
     end
