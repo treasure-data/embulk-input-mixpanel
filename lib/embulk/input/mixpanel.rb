@@ -17,7 +17,8 @@ module Embulk
 
         from_date = config.param(:from_date, :string)
         to_date = config.param(:to_date, :string)
-        task[:dates] = (Date.parse(from_date)..Date.parse(to_date)).to_a
+        dates = (Date.parse(from_date)..Date.parse(to_date))
+        task[:dates] = dates.map {|date| date.to_s}
 
         task[:api_key] = config.param(:api_key, :string)
         task[:api_secret] = config.param(:api_secret, :string)
@@ -92,11 +93,11 @@ module Embulk
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           from_date = dates.first
           to_date = dates.last
-          Embulk.logger.info "Fetching data from #{from_date.to_s} to #{to_date.to_s} ..."
+          Embulk.logger.info "Fetching data from #{from_date} to #{to_date} ..."
 
           params = @params.dup
-          params["from_date"] = from_date.to_s
-          params["to_date"] = to_date.to_s
+          params["from_date"] = from_date
+          params["to_date"] = to_date
 
           records = client.export(params)
 
