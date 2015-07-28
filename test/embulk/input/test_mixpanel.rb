@@ -11,7 +11,7 @@ module Embulk
       TO_DATE = "2015-03-02".freeze
 
       DURATIONS = [
-        {from_date: FROM_DATE, to_date: "2015-02-28"}, # It has 7 days between 2015-02-02 and 2015-02-28
+        {from_date: FROM_DATE, to_date: "2015-02-28"}, # It has 7 days between 2015-02-22 and 2015-02-28
         {from_date: "2015-03-01", to_date: TO_DATE},
       ]
 
