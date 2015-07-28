@@ -162,6 +162,7 @@ module Embulk
           schema: [
             {"name" => "foo", "type" => "long"},
             {"name" => "time", "type" => "long"},
+            {"name" => "event", "type" => "string"},
           ],
           dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
           params: Mixpanel.export_params(embulk_config),
