@@ -72,6 +72,11 @@ module Embulk
           end
         end
 
+        def test_resume
+          actual = Mixpanel.resume(transaction_task("Asia/Tokyo"), columns, 1, &control)
+          assert_equal({}, actual)
+        end
+
         def control
           proc {} # dummy
         end
