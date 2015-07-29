@@ -140,6 +140,14 @@ module Embulk
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
         end
 
+        def test_preview_check
+          mock(@plugin).preview? { true }
+          stub(@page_builder).add(anything)
+          stub(@page_builder).finish
+
+          @plugin.run
+        end
+
         def test_preview
           stub(@plugin).preview? { true }
           mock(@page_builder).add(anything).times(records.length)
