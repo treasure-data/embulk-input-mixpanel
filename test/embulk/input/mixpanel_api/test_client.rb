@@ -31,10 +31,17 @@ module Embulk
             super
 
             @httpclient = HTTPClient.new
-            stub(@client).httpclient { @httpclient }
+          end
+
+          def test_httpclient
+            stub_response(success_response)
+            mock(@client).httpclient { @httpclient }
+
+            @client.export(params)
           end
 
           def test_response_class
+            stub_client
             stub_response(success_response)
 
             actual = @client.export(params)
@@ -43,6 +50,7 @@ module Embulk
           end
 
           def test_http_request
+            stub_client
             mock(@httpclient).get(Client::ENDPOINT_EXPORT, params) do
               success_response
             end
@@ -51,6 +59,7 @@ module Embulk
           end
 
           def test_success
+            stub_client
             stub_response(success_response)
 
             actual = @client.export(params)
@@ -59,6 +68,7 @@ module Embulk
           end
 
           def test_failure
+            stub_client
             stub_response(failure_response)
 
             stub(Embulk.logger).error(failure_response.body) {}
@@ -68,6 +78,7 @@ module Embulk
           end
 
           def test_failure_logging
+            stub_client
             stub_response(failure_response)
 
             mock(Embulk.logger).error(failure_response.body) {}
@@ -75,6 +86,10 @@ module Embulk
           end
 
           private
+
+          def stub_client
+            stub(@client).httpclient { @httpclient }
+          end
 
           def stub_response(response)
             stub(@httpclient).get(Client::ENDPOINT_EXPORT, params) do
