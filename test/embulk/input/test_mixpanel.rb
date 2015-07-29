@@ -9,6 +9,7 @@ module Embulk
       API_SECRET = "api_secret".freeze
       FROM_DATE = "2015-02-22".freeze
       TO_DATE = "2015-03-02".freeze
+      TIMEZONE = "Asia/Tokyo".freeze
 
       DURATIONS = [
         {from_date: FROM_DATE, to_date: "2015-02-28"}, # It has 7 days between 2015-02-22 and 2015-02-28
@@ -58,14 +59,14 @@ module Embulk
 
       class TransactionTest < self
         def test_valid_timezone
-          timezone = "Asia/Tokyo"
+          timezone = TIMEZONE
           mock(Mixpanel).resume(transaction_task(timezone), columns, 1, &control)
 
           Mixpanel.transaction(transaction_config(timezone), &control)
         end
 
         def test_invalid_timezone
-          timezone = "Asia/Tokyoooooo"
+          timezone = "#{TIMEZONE}ooooo"
 
           assert_raise(TZInfo::InvalidTimezoneIdentifier) do
             Mixpanel.transaction(transaction_config(timezone), &control)
@@ -73,7 +74,7 @@ module Embulk
         end
 
         def test_resume
-          actual = Mixpanel.resume(transaction_task("Asia/Tokyo"), columns, 1, &control)
+          actual = Mixpanel.resume(transaction_task(TIMEZONE), columns, 1, &control)
           assert_equal({}, actual)
         end
 
@@ -185,7 +186,7 @@ module Embulk
         {
           api_key: API_KEY,
           api_secret: API_SECRET,
-          timezone: "Asia/Tokyo",
+          timezone: TIMEZONE,
           schema: schema,
           dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
           params: Mixpanel.export_params(embulk_config),
