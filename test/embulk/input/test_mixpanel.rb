@@ -9,6 +9,7 @@ module Embulk
       API_SECRET = "api_secret".freeze
       FROM_DATE = "2015-02-22".freeze
       TO_DATE = "2015-03-02".freeze
+      TIMEZONE = "Asia/Tokyo".freeze
 
       DURATIONS = [
         {from_date: FROM_DATE, to_date: "2015-02-28"}, # It has 7 days between 2015-02-22 and 2015-02-28
@@ -56,6 +57,56 @@ module Embulk
         assert_equal(expected, actual)
       end
 
+      class TransactionTest < self
+        def test_valid_timezone
+          timezone = TIMEZONE
+          mock(Mixpanel).resume(transaction_task(timezone), columns, 1, &control)
+
+          Mixpanel.transaction(transaction_config(timezone), &control)
+        end
+
+        def test_invalid_timezone
+          timezone = "#{TIMEZONE}ooooo"
+
+          assert_raise(TZInfo::InvalidTimezoneIdentifier) do
+            Mixpanel.transaction(transaction_config(timezone), &control)
+          end
+        end
+
+        def test_resume
+          actual = Mixpanel.resume(transaction_task(TIMEZONE), columns, 1, &control)
+          assert_equal({}, actual)
+        end
+
+        def control
+          proc {} # dummy
+        end
+
+        def transaction_config(timezone)
+          _config = config.merge(
+            timezone: timezone,
+            columns: schema,
+          )
+          DataSource[*_config.to_a.flatten(1)]
+        end
+
+        def transaction_task(timezone)
+          task.merge(
+            dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).map {|date| date.to_s},
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            timezone: timezone,
+            schema: schema
+          )
+        end
+
+        def columns
+          schema.map do |col|
+            Column.new(nil, col["name"], col["type"].to_sym)
+          end
+        end
+      end
+
       def test_export_params
         config_params = [
           :type, "mixpanel",
@@ -89,6 +140,14 @@ module Embulk
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
         end
 
+        def test_preview_check
+          mock(@plugin).preview? { true }
+          stub(@page_builder).add(anything)
+          stub(@page_builder).finish
+
+          @plugin.run
+        end
+
         def test_preview
           stub(@plugin).preview? { true }
           mock(@page_builder).add(anything).times(records.length)
@@ -114,27 +173,7 @@ module Embulk
           @plugin.run
         end
 
-        def test_invalid_timezone
-          assert_raise(TZInfo::InvalidTimezoneIdentifier) do
-            Mixpanel.new(task.merge(timezone: "Asia/Tokyooooooooo"), nil, nil, @page_builder).run
-          end
-        end
-
         private
-
-        def task
-          {
-            api_key: API_KEY,
-            api_secret: API_SECRET,
-            timezone: "Asia/Tokyo",
-            schema: [
-              {"name" => "foo", "type" => "long"},
-              {"name" => "time", "type" => "long"},
-            ],
-            dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
-            params: Mixpanel.export_params(embulk_config),
-          }
-        end
 
         def timezone_offset_seconds
           60 * 60 * 9 # Asia/Tokyo
@@ -142,6 +181,25 @@ module Embulk
       end
 
       private
+
+      def schema
+        [
+          {"name" => "foo", "type" => "long"},
+          {"name" => "time", "type" => "long"},
+          {"name" => "event", "type" => "string"},
+        ]
+      end
+
+      def task
+        {
+          api_key: API_KEY,
+          api_secret: API_SECRET,
+          timezone: TIMEZONE,
+          schema: schema,
+          dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).to_a,
+          params: Mixpanel.export_params(embulk_config),
+        }
+      end
 
       def records
         [
@@ -160,14 +218,17 @@ module Embulk
         1234567890
       end
 
-      def embulk_config
-        config = {
+      def config
+        {
           type: "mixpanel",
           api_key: API_KEY,
           api_secret: API_SECRET,
           from_date: FROM_DATE,
           to_date: TO_DATE,
         }
+      end
+
+      def embulk_config
         DataSource[*config.to_a.flatten(1)]
       end
     end
