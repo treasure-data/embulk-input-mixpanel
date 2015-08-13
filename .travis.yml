@@ -16,4 +16,4 @@ gemfile:
   - gemfiles/embulk-latest
 matrix:
   allow_failures:
-    - gemfiles/embulk-latest
+    - gemfile: gemfiles/embulk-latest
