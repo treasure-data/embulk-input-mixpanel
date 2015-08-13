@@ -19,8 +19,11 @@ module Embulk
 
         task[:params] = export_params(config)
 
-        from_date = config.param(:from_date, :string)
-        to_date = config.param(:to_date, :string)
+        default_to_date = (Date.today - 1).to_s
+        default_from_date = (Date.today - 2).to_s
+        from_date = config.param(:from_date, :string, default: default_from_date)
+        to_date = config.param(:to_date, :string, default: default_to_date)
+
         dates = Date.parse(from_date)..Date.parse(to_date)
         task[:dates] = dates.map {|date| date.to_s}
 
