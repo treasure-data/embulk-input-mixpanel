@@ -14,3 +14,6 @@ gemfile:
   - gemfiles/embulk-0.6.16
   - gemfiles/embulk-0.6.17
   - gemfiles/embulk-latest
+matrix:
+  allow_failures:
+    - gemfiles/embulk-latest
