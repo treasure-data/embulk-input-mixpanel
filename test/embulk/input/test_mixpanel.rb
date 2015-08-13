@@ -224,7 +224,7 @@ module Embulk
           api_key: API_KEY,
           api_secret: API_SECRET,
           from_date: FROM_DATE,
-          to_date: TO_DATE,
+          days: (Date.parse(TO_DATE) - Date.parse(FROM_DATE)).to_i
         }
       end
 
