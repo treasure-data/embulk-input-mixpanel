@@ -21,9 +21,12 @@ module Embulk
           params[:sig] = signature(params)
           response = httpclient.get(ENDPOINT_EXPORT, params)
 
-          if response.code >= 400
+          if (400..499).include?(response.code)
             Embulk.logger.error response.body
-            return Enumerator.new{ }
+            raise ConfigError, response.body
+          elsif response.code >= 500
+            Embulk.logger.error response.body
+            raise RuntimeError, response.body
           end
 
           Enumerator.new do |y|
