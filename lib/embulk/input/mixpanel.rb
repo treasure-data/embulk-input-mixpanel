@@ -37,7 +37,7 @@ module Embulk
           TZInfo::Timezone.get(task[:timezone])
         rescue => e
           Embulk.logger.error "'#{task[:timezone]}' is invalid timezone"
-          raise e
+          raise ConfigError, e.message
         end
 
         columns = []

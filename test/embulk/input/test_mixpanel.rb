@@ -68,7 +68,7 @@ module Embulk
         def test_invalid_timezone
           timezone = "#{TIMEZONE}ooooo"
 
-          assert_raise(TZInfo::InvalidTimezoneIdentifier) do
+          assert_raise(Embulk::ConfigError) do
             Mixpanel.transaction(transaction_config(timezone), &control)
           end
         end
