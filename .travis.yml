@@ -22,4 +22,4 @@ gemfile:
   - gemfiles/embulk-latest
 matrix:
   allow_failures:
-    - gemfile: gemfiles/embulk-latest
+    - gemfile: gemfiles/embulk-0.6.22
