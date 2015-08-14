@@ -19,11 +19,14 @@ module Embulk
         task[:params] = export_params(config)
 
         default_from_date = (Date.today - 2).to_s
-
         from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
 
         default_days = ((Date.today - 1) - from_date).to_i
         days = config.param(:days, :integer, default: default_days)
+
+        if days < 1
+          raise ConfigError, "Please spcify bigger number than 0 for 'days' configration."
+        end
 
         dates = from_date..(from_date + days)
         task[:dates] = dates.map {|date| date.to_s}

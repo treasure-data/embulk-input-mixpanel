@@ -58,25 +58,85 @@ module Embulk
       end
 
       class TransactionTest < self
-        def test_valid_timezone
-          timezone = TIMEZONE
-          mock(Mixpanel).resume(transaction_task(timezone), columns, 1, &control)
+        class TimezoneTest < self
+          def test_valid_timezone
+            timezone = TIMEZONE
+            mock(Mixpanel).resume(transaction_task(timezone), columns, 1, &control)
 
-          Mixpanel.transaction(transaction_config(timezone), &control)
+            Mixpanel.transaction(transaction_config(timezone), &control)
+          end
+
+          def test_invalid_timezone
+            timezone = "#{TIMEZONE}ooooo"
+
+            assert_raise(Embulk::ConfigError) do
+              Mixpanel.transaction(transaction_config(timezone), &control)
+            end
+          end
+
+          private
+
+          def transaction_task(timezone)
+            task.merge(
+              dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).map {|date| date.to_s},
+              api_key: API_KEY,
+              api_secret: API_SECRET,
+              timezone: timezone,
+              schema: schema
+            )
+          end
+
+          def transaction_config(timezone)
+            _config = config.merge(
+              timezone: timezone,
+              columns: schema,
+            )
+            DataSource[*_config.to_a.flatten(1)]
+          end
         end
 
-        def test_invalid_timezone
-          timezone = "#{TIMEZONE}ooooo"
+        class DaysTest < self
+          def test_valid_days
+            days = 5
 
-          assert_raise(Embulk::ConfigError) do
-            Mixpanel.transaction(transaction_config(timezone), &control)
+            mock(Mixpanel).resume(transaction_task(days), columns, 1, &control)
+            Mixpanel.transaction(transaction_config(days), &control)
+          end
+
+          def test_invalid_days
+            days = 0
+
+            assert_raise(Embulk::ConfigError) do
+              Mixpanel.transaction(transaction_config(days), &control)
+            end
+          end
+
+          private
+
+          def transaction_task(days)
+            task.merge(
+              dates: (Date.parse(FROM_DATE)..Date.parse(FROM_DATE) + days).map {|date| date.to_s},
+              api_key: API_KEY,
+              api_secret: API_SECRET,
+              timezone: TIMEZONE,
+              schema: schema
+            )
+          end
+
+          def transaction_config(days)
+            _config = config.merge(
+              days: days,
+              columns: schema,
+              timezone: TIMEZONE,
+            )
+            DataSource[*_config.to_a.flatten(1)]
           end
         end
 
         def test_resume
           today = Date.today
           control = proc { [{to_date: today.to_s}] }
-          actual = Mixpanel.resume(transaction_task(TIMEZONE), columns, 1, &control)
+          actual = Mixpanel.resume(transaction_task, columns, 1, &control)
           assert_equal({from_date: today.next.to_s}, actual)
         end
 
@@ -84,20 +144,12 @@ module Embulk
           proc {} # dummy
         end
 
-        def transaction_config(timezone)
-          _config = config.merge(
-            timezone: timezone,
-            columns: schema,
-          )
-          DataSource[*_config.to_a.flatten(1)]
-        end
-
-        def transaction_task(timezone)
+        def transaction_task
           task.merge(
             dates: (Date.parse(FROM_DATE)..Date.parse(TO_DATE)).map {|date| date.to_s},
             api_key: API_KEY,
             api_secret: API_SECRET,
-            timezone: timezone,
+            timezone: TIMEZONE,
             schema: schema
           )
         end
