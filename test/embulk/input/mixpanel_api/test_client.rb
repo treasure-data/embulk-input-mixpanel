@@ -71,19 +71,6 @@ module Embulk
             stub_client
             stub_response(failure_response)
 
-            stub(Embulk.logger).error(failure_response.body) {}
-
-            assert_raise(Embulk::ConfigError) do
-              @client.export(params)
-            end
-          end
-
-          def test_failure_logging
-            stub_client
-            stub_response(failure_response)
-
-            mock(Embulk.logger).error(failure_response.body) {}
-
             assert_raise(Embulk::ConfigError) do
               @client.export(params)
             end
