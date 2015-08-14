@@ -19,7 +19,12 @@ module Embulk
         task[:params] = export_params(config)
 
         default_from_date = (Date.today - 2).to_s
-        from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
+
+        begin
+          from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
+        rescue ArgumentError # invalid date
+          raise ConfigError, "Invalid date for 'from_date' configuration."
+        end
 
         default_days = ((Date.today - 1) - from_date).to_i
         days = config.param(:days, :integer, default: default_days)
