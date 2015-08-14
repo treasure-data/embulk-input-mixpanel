@@ -13,6 +13,12 @@ jdk:
 gemfile:
   - gemfiles/embulk-0.6.16
   - gemfiles/embulk-0.6.17
+  - gemfiles/embulk-0.6.18
+  - gemfiles/embulk-0.6.19
+  - gemfiles/embulk-0.6.20
+  - gemfiles/embulk-0.6.21
+  - gemfiles/embulk-0.6.22
+  - gemfiles/embulk-0.6.23
   - gemfiles/embulk-latest
 matrix:
   allow_failures:
