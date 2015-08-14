@@ -74,8 +74,10 @@ module Embulk
         end
 
         def test_resume
+          today = Date.today
+          control = proc { [{to_date: today.to_s}] }
           actual = Mixpanel.resume(transaction_task(TIMEZONE), columns, 1, &control)
-          assert_equal({}, actual)
+          assert_equal({from_date: today.next.to_s}, actual)
         end
 
         def control
@@ -224,7 +226,7 @@ module Embulk
           api_key: API_KEY,
           api_secret: API_SECRET,
           from_date: FROM_DATE,
-          to_date: TO_DATE,
+          days: (Date.parse(TO_DATE) - Date.parse(FROM_DATE)).to_i
         }
       end
 

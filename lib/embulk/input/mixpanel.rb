@@ -19,9 +19,14 @@ module Embulk
 
         task[:params] = export_params(config)
 
-        from_date = config.param(:from_date, :string)
-        to_date = config.param(:to_date, :string)
-        dates = Date.parse(from_date)..Date.parse(to_date)
+        default_from_date = (Date.today - 2).to_s
+
+        from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
+
+        default_days = ((Date.today - 1) - from_date).to_i
+        days = config.param(:days, :integer, default: default_days)
+
+        dates = from_date..(from_date + days)
         task[:dates] = dates.map {|date| date.to_s}
 
         task[:api_key] = config.param(:api_key, :string)
@@ -51,7 +56,12 @@ module Embulk
       def self.resume(task, columns, count, &control)
         commit_reports = yield(task, columns, count)
 
-        next_config_diff = {}
+        # NOTE: If this plugin supports to run by multi threads, this
+        # implementation is terrible.
+        commit_report = commit_reports.first
+        next_to_date = Date.parse(commit_report[:to_date]).next
+
+        next_config_diff = {from_date: next_to_date.to_s}
         return next_config_diff
       end
 
@@ -126,7 +136,7 @@ module Embulk
 
         page_builder.finish
 
-        commit_report = {}
+        commit_report = {to_date: @dates.last}
         return commit_report
       end
 

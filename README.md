@@ -34,8 +34,8 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 - **api_key**: project API Key (string, required)
 - **api_secret**: project API Secret (string, required)
 - **timezone**: project timezone(string, required)
-- **from_date**: From date to export (string, required)
-- **to_date**: To date to export (string, required)
+- **from_date**: From date to export (string, optional, default: today - 2)
+- **days**: Count of days range for exporting (integer, optional, default: (today - 1) - from_date)
 - **event**: The event or events to filter data (array, optional, default: nil)
 - **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
 - **bucket**:The data backet to filter data (string, optional, default: nil)
@@ -49,7 +49,7 @@ in:
   api_secret: "API_SECRET"
   timezone: "US/Pacific"
   from_date: "2015-07-19"
-  to_date: "2015-07-20"
+  days: 5
 ```
 
 ## Run test
