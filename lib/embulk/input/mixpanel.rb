@@ -3,7 +3,6 @@ require "embulk/input/mixpanel_api/client"
 
 module Embulk
   module Input
-
     class Mixpanel < InputPlugin
       Plugin.register_input("mixpanel", self)
 
