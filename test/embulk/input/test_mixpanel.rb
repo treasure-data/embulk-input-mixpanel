@@ -59,45 +59,38 @@ module Embulk
         assert_equal(expected, actual)
       end
 
+      class GenerateDatesTest < self
+        def test_valid_from_date
+          from_date = "2015-08-14"
+          parsed_date = Date.parse(from_date)
+
+          expected = (parsed_date..(parsed_date + DAYS))
+          actual = Mixpanel.generate_dates(transaction_config(from_date))
+          assert_equal(expected, actual)
+        end
+
+        def test_invalid_from_date
+          from_date = "2015-08-41"
+
+          assert_raise(Embulk::ConfigError) do
+            Mixpanel.generate_dates(transaction_config(from_date))
+          end
+        end
+
+        private
+
+        def transaction_config(from_date)
+          _config = config.merge(
+            from_date: from_date,
+            timezone: TIMEZONE,
+            columns: schema,
+          )
+          DataSource[*_config.to_a.flatten(1)]
+        end
+      end
+
       class TransactionTest < self
         class FromDateTest < self
-          def test_valid_from_date
-            from_date = "2015-08-14"
-
-            mock(Mixpanel).resume(transaction_task(from_date), columns, 1, &control)
-
-            Mixpanel.transaction(transaction_config(from_date), &control)
-          end
-
-          def test_invalid_from_date
-            from_date = "2015-08-41"
-
-            assert_raise(Embulk::ConfigError) do
-              Mixpanel.transaction(transaction_config(from_date), &control)
-            end
-          end
-
-          private
-
-          def transaction_task(_from_date)
-            from_date = Date.parse(_from_date)
-            task.merge(
-              dates: (from_date..(from_date + DAYS)).map {|date| date.to_s},
-              api_key: API_KEY,
-              api_secret: API_SECRET,
-              timezone: TIMEZONE,
-              schema: schema
-            )
-          end
-
-          def transaction_config(from_date)
-            _config = config.merge(
-              from_date: from_date,
-              timezone: TIMEZONE,
-              columns: schema,
-            )
-            DataSource[*_config.to_a.flatten(1)]
-          end
         end
 
         class TimezoneTest < self

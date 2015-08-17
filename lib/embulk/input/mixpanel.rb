@@ -18,22 +18,7 @@ module Embulk
 
         task[:params] = export_params(config)
 
-        default_from_date = (Date.today - 2).to_s
-
-        begin
-          from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
-        rescue ArgumentError # invalid date
-          raise ConfigError, "Invalid date for 'from_date' configuration."
-        end
-
-        default_days = ((Date.today - 1) - from_date).to_i
-        days = config.param(:days, :integer, default: default_days)
-
-        if days < 1
-          raise ConfigError, "Please spcify bigger number than 0 for 'days' configration."
-        end
-
-        dates = from_date..(from_date + days)
+        dates = generate_dates(config)
         task[:dates] = dates.map {|date| date.to_s}
 
         task[:api_key] = config.param(:api_key, :string)
@@ -98,6 +83,25 @@ module Embulk
         end
         columns.unshift(name: "event", type: :string)
         return {"columns" => columns}
+      end
+
+      def self.generate_dates(config)
+        default_from_date = (Date.today - 2).to_s
+
+        begin
+          from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
+        rescue ArgumentError # invalid date
+          raise ConfigError, "Invalid date for 'from_date' configuration."
+        end
+
+        default_days = ((Date.today - 1) - from_date).to_i
+        days = config.param(:days, :integer, default: default_days)
+
+        if days < 1
+          raise ConfigError, "Please spcify bigger number than 0 for 'days' configration."
+        end
+
+        from_date..(from_date + days)
       end
 
       def init
