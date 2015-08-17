@@ -67,11 +67,20 @@ module Embulk
             assert_equal(dummy_responses, actual.to_a)
           end
 
-          def test_failure
+          def test_failure_with_400
             stub_client
-            stub_response(failure_response)
+            stub_response(failure_response(400))
 
             assert_raise(Embulk::ConfigError) do
+              @client.export(params)
+            end
+          end
+
+          def test_failure_with_500
+            stub_client
+            stub_response(failure_response(500))
+
+            assert_raise(RuntimeError) do
               @client.export(params)
             end
           end
@@ -92,8 +101,8 @@ module Embulk
             Struct.new(:code, :body).new(200, jsonl_dummy_responses)
           end
 
-          def failure_response
-            Struct.new(:code, :body).new(400, "{'error': 'invalid'}")
+          def failure_response(code)
+            Struct.new(:code, :body).new(code, "{'error': 'invalid'}")
           end
 
           def params
