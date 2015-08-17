@@ -91,14 +91,14 @@ module Embulk
         begin
           from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
         rescue ArgumentError # invalid date
-          raise ConfigError, "Invalid date for 'from_date' configuration."
+          raise ConfigError, "from_date '#{from_date}' is invalid date"
         end
 
         default_days = ((Date.today - 1) - from_date).to_i
         days = config.param(:days, :integer, default: default_days)
 
         if days < 1
-          raise ConfigError, "Please spcify bigger number than 0 for 'days' configration."
+          raise ConfigError, "days '#{days}' is invalid. Please spcify bigger number than 0."
         end
 
         from_date..(from_date + days)
