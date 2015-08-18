@@ -18,7 +18,20 @@ module Embulk
 
         task[:params] = export_params(config)
 
-        dates = generate_dates(config)
+        begin
+          from_date_str = config.param(:from_date, :string, default: (Date.today - 2).to_s)
+          from_date = Date.parse(from_date_str)
+        rescue ArgumentError # invalid date
+          raise ConfigError, "from_date '#{from_date_str}' is invalid date"
+        end
+
+        days = config.param(:days, :integer, default: Date.today - 1 - from_date)
+        if days < 1
+          raise ConfigError, "days '#{days}' is invalid. Please specify bigger number than 0."
+        end
+
+        dates = from_date..(from_date + days)
+
         task[:dates] = dates.map {|date| date.to_s}
 
         task[:api_key] = config.param(:api_key, :string)
@@ -85,32 +98,20 @@ module Embulk
         return {"columns" => columns}
       end
 
-      def self.generate_dates(config)
-        default_from_date = (Date.today - 2).to_s
-
-        begin
-          from_date = Date.parse(config.param(:from_date, :string, default: default_from_date))
-        rescue ArgumentError # invalid date
-          raise ConfigError, "from_date '#{from_date}' is invalid date"
-        end
-
-        default_days = ((Date.today - 1) - from_date).to_i
-        days = config.param(:days, :integer, default: default_days)
-
-        if days < 1
-          raise ConfigError, "days '#{days}' is invalid. Please spcify bigger number than 0."
-        end
-
-        from_date..(from_date + days)
-      end
-
       def init
         @api_key = task[:api_key]
         @api_secret = task[:api_secret]
         @params = task[:params]
         @timezone = task[:timezone]
         @schema = task[:schema]
-        @dates = task[:dates]
+        @dates = task[:dates].find_all do |date|
+          date < Date.today
+        end
+
+        overtimes = task[:dates] - @dates
+        if overtimes
+          Embulk.logger.warn "These dates are too early access, ignored them: #{overtimes.map(&:to_s)}"
+        end
       end
 
       def run

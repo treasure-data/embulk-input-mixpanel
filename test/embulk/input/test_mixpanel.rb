@@ -59,21 +59,32 @@ module Embulk
         assert_equal(expected, actual)
       end
 
-      class GenerateDatesTest < self
+      class TransactionDateTest < self
         def test_valid_from_date
           from_date = "2015-08-14"
-          parsed_date = Date.parse(from_date)
+          mock(Mixpanel).resume(anything, anything, 1)
 
-          expected = (parsed_date..(parsed_date + DAYS))
-          actual = Mixpanel.generate_dates(transaction_config(from_date))
-          assert_equal(expected, actual)
+          Mixpanel.transaction(transaction_config(from_date))
         end
 
         def test_invalid_from_date
           from_date = "2015-08-41"
 
           assert_raise(Embulk::ConfigError) do
-            Mixpanel.generate_dates(transaction_config(from_date))
+            Mixpanel.transaction(transaction_config(from_date))
+          end
+        end
+
+        def test_future
+          from_date = (Date.today + 10).to_s
+          mock(Mixpanel).resume(anything, anything, 1)
+
+          Mixpanel.transaction(transaction_config(from_date))
+        end
+
+        def test_negative_days
+          assert_raise(Embulk::ConfigError) do
+            Mixpanel.transaction(transaction_config(Date.today.to_s).merge(days: -1))
           end
         end
 
@@ -261,6 +272,31 @@ module Embulk
           mock(@page_builder).finish
 
           @plugin.run
+        end
+
+        class EarlyDateTest < self
+          def setup
+          end
+
+          def test_ignore_early_days
+            stub(Embulk).logger { Logger.new(File::NULL) }
+            plugin = Mixpanel.new(task.merge(dates: dates.to_a), nil, nil, Object.new)
+
+            expect = dates.find_all{|d| d < Date.today}
+            actual = plugin.instance_variable_get(:@dates)
+            assert_equal(expect, actual)
+          end
+
+          def test_warn
+            mock(Embulk.logger).warn(anything)
+            Mixpanel.new(task.merge(dates: dates.to_a), nil, nil, Object.new)
+          end
+
+          private
+
+          def dates
+            (Date.today - 10)..(Date.today + 10)
+          end
         end
 
         private
