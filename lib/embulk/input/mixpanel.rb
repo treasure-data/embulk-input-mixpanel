@@ -109,7 +109,7 @@ module Embulk
         end
 
         overtimes = task[:dates] - @dates
-        if overtimes
+        unless overtimes.empty?
           Embulk.logger.warn "These dates are too early access, ignored them: #{overtimes.map(&:to_s)}"
         end
       end
