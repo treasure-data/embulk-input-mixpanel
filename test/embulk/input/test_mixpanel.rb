@@ -310,9 +310,6 @@ module Embulk
           @plugin.run
         end
 
-        class EarlyDateTest < self
-        end
-
         private
 
         def timezone_offset_seconds
