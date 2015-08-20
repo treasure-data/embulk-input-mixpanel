@@ -59,21 +59,32 @@ module Embulk
         assert_equal(expected, actual)
       end
 
-      class GenerateDatesTest < self
+      class TransactionDateTest < self
         def test_valid_from_date
           from_date = "2015-08-14"
-          parsed_date = Date.parse(from_date)
+          mock(Mixpanel).resume(anything, anything, 1)
 
-          expected = (parsed_date..(parsed_date + DAYS))
-          actual = Mixpanel.generate_dates(transaction_config(from_date))
-          assert_equal(expected, actual)
+          Mixpanel.transaction(transaction_config(from_date))
         end
 
         def test_invalid_from_date
           from_date = "2015-08-41"
 
           assert_raise(Embulk::ConfigError) do
-            Mixpanel.generate_dates(transaction_config(from_date))
+            Mixpanel.transaction(transaction_config(from_date))
+          end
+        end
+
+        def test_future
+          from_date = (Date.today + 10).to_s
+          mock(Mixpanel).resume(anything, anything, 1)
+
+          Mixpanel.transaction(transaction_config(from_date))
+        end
+
+        def test_negative_days
+          assert_raise(Embulk::ConfigError) do
+            Mixpanel.transaction(transaction_config((Date.today - 1).to_s).merge(days: -1))
           end
         end
 
@@ -91,6 +102,42 @@ module Embulk
 
       class TransactionTest < self
         class FromDateTest < self
+          def setup
+          end
+
+          def test_ignore_early_days
+            stub(Embulk).logger { Logger.new(File::NULL) }
+
+            mock(Mixpanel).resume(task.merge(dates: target_dates), columns, 1, &control)
+            Mixpanel.transaction(transaction_config, &control)
+          end
+
+          def test_warn
+            stub(Mixpanel).resume(task.merge(dates: target_dates), columns, 1, &control)
+            mock(Embulk.logger).warn(anything)
+
+            Mixpanel.transaction(transaction_config, &control)
+          end
+
+          private
+
+          def dates
+            (Date.today - 10)..(Date.today + 10)
+          end
+
+          def target_dates
+            dates.find_all{|d| d < Date.today}.map {|date| date.to_s}
+          end
+
+          def transaction_config
+            _config = config.merge(
+              from_date: dates.first.to_s,
+              days: dates.to_a.size,
+              timezone: TIMEZONE,
+              columns: schema
+            )
+            DataSource[*_config.to_a.flatten(1)]
+          end
         end
 
         class TimezoneTest < self

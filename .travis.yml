@@ -23,3 +23,4 @@ gemfile:
 matrix:
   allow_failures:
     - gemfile: gemfiles/embulk-0.6.22
+    - gemfile: gemfiles/embulk-latest # embulk 0.7.1
