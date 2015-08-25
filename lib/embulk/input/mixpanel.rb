@@ -100,9 +100,9 @@ module Embulk
           raise ConfigError, "Please specify date later than yesterday (inclusive) as 'from_date'"
         end
 
-        # NOTE: It should have 7 days between from_date and to_date
-        to_date = from_date + SLICE_DAYS_COUNT
-        to_date = Date.today - 1 if to_date > (Date.today - 1)
+        # NOTE: to_date is yeasterday if from_date..Date.Today doesn't have
+        # more SLICE_DAYS_COUNT days.
+        to_date = [from_date + SLICE_DAYS_COUNT, Date.today - 1].min
 
         params = export_params(config)
         params = params.merge(
