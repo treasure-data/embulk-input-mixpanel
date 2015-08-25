@@ -92,6 +92,21 @@ module Embulk
           assert_equal(expected, actual)
         end
 
+        def test_no_from_date
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+          }
+
+          from_date = Date.today - 1 - Mixpanel::SLICE_DAYS_COUNT
+          to_date = Date.today - 1
+          stub_export(from_date, to_date)
+
+          actual = Mixpanel.guess(embulk_config(config))
+          assert_equal(expected, actual)
+        end
+
         private
 
         def stub_export(from_date, to_date)
