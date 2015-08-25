@@ -106,7 +106,7 @@ module Embulk
 
         params = export_params(config)
         params = params.merge(
-          from_date: from_date_str,
+          from_date: from_date.to_s,
           to_date: to_date.to_s,
         )
 

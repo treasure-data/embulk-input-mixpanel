@@ -36,6 +36,7 @@ module Embulk
             from_date = duration[:from_date]
             to_date = duration[:to_date]
 
+            params = params.merge(from_date: from_date, to_date: to_date)
             stub(klass).export(params) { records }
           end
         end
@@ -54,6 +55,9 @@ module Embulk
             from_date: FROM_DATE,
           }
 
+          from_date = config[:from_date]
+          to_date = Date.parse(from_date) + Mixpanel::SLICE_DAYS_COUNT
+          stub_export(from_date, to_date)
 
           actual = Mixpanel.guess(embulk_config(config))
           assert_equal(expected, actual)
@@ -80,11 +84,30 @@ module Embulk
             from_date: (Date.today - 1).to_s,
           }
 
+          from_date = config[:from_date]
+          to_date = from_date
+          stub_export(from_date, to_date)
+
           actual = Mixpanel.guess(embulk_config(config))
           assert_equal(expected, actual)
         end
 
         private
+
+        def stub_export(from_date, to_date)
+          params = {
+            api_key: API_KEY,
+            event: nil,
+            where: nil,
+            bucket: nil,
+            from_date: from_date.to_s,
+            to_date: to_date.to_s,
+          }
+
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).export(params) { records }
+          end
+        end
 
         def embulk_config(config)
           DataSource[*config.to_a.flatten(1)]
@@ -313,6 +336,13 @@ module Embulk
       end
 
       class RunTest < self
+        def setup_client
+
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).export(anything) { records }
+          end
+        end
+
         def setup
           super
 
@@ -376,7 +406,7 @@ module Embulk
           api_secret: API_SECRET,
           timezone: TIMEZONE,
           schema: schema,
-          dates: DATES.to_a,
+          dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
         }
       end
