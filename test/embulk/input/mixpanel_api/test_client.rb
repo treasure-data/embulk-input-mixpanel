@@ -9,6 +9,7 @@ module Embulk
 
         def setup
           @client = Client.new(API_KEY, API_SECRET)
+          stub(Embulk).logger { ::Logger.new(IO::NULL) }
         end
 
         # NOTE: Client#signature is private method but this value
