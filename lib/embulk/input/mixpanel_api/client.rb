@@ -24,6 +24,8 @@ module Embulk
 
           response = httpclient.get(ENDPOINT_EXPORT, params)
 
+          Embulk.logger.debug "response code: #{response.code}"
+
           if (400..499).include?(response.code)
             raise ConfigError, response.body
           elsif response.code >= 500
