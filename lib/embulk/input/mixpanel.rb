@@ -96,7 +96,7 @@ module Embulk
 
         from_date = Date.parse(from_date_str)
 
-        if from_date > (Date.today - 1)
+        if from_date > Date.today - 1
           raise ConfigError, "Please specify date later than yesterday (inclusive) as `from_date`"
         end
 
