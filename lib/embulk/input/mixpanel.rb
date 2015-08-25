@@ -92,14 +92,22 @@ module Embulk
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
 
-        from_date = config.param(:from_date, :string, default: (Date.today - 2 - SLICE_DAYS_COUNT).to_s)
-        # NOTE: It should have 7 days between from_date and to_date
-        to_date = (Date.parse(from_date) + SLICE_DAYS_COUNT - 1).to_s
+        from_date_str = config.param(:from_date, :string, default: (Date.today - 1 - SLICE_DAYS_COUNT).to_s)
+
+        from_date = Date.parse(from_date_str)
+
+        if from_date > Date.today - 1
+          raise ConfigError, "Please specify date later than yesterday (inclusive) as 'from_date'"
+        end
+
+        # NOTE: to_date is yeasterday if from_date..Date.Today doesn't have
+        # more SLICE_DAYS_COUNT days.
+        to_date = [from_date + SLICE_DAYS_COUNT, Date.today - 1].min
 
         params = export_params(config)
         params = params.merge(
-          from_date: from_date,
-          to_date: to_date,
+          from_date: from_date.to_s,
+          to_date: to_date.to_s,
         )
 
         records = client.export(params)

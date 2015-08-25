@@ -36,6 +36,7 @@ module Embulk
             from_date = duration[:from_date]
             to_date = duration[:to_date]
 
+            params = params.merge(from_date: from_date, to_date: to_date)
             stub(klass).export(params) { records }
           end
         end
@@ -45,18 +46,98 @@ module Embulk
         stub(Embulk).logger { ::Logger.new(IO::NULL) }
       end
 
-      def test_guess
-        expected = {
-          "columns" => [
-            {name: "event", type: :string},
-            {name: "foo", type: :string},
-            {name: "time", type: :long},
-            {name: "int", type: :long},
-          ]
-        }
+      class GuessTest < self
+        def test_from_date_old_date
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            from_date: FROM_DATE,
+          }
 
-        actual = Mixpanel.guess(embulk_config)
-        assert_equal(expected, actual)
+          from_date = config[:from_date]
+          to_date = Date.parse(from_date) + Mixpanel::SLICE_DAYS_COUNT
+          stub_export(from_date, to_date)
+
+          actual = Mixpanel.guess(embulk_config(config))
+          assert_equal(expected, actual)
+        end
+
+        def test_from_date_today
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            from_date: Date.today.to_s,
+          }
+
+          assert_raise(ConfigError) do
+            Mixpanel.guess(embulk_config(config))
+          end
+        end
+
+        def test_from_date_yesterday
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            from_date: (Date.today - 1).to_s,
+          }
+
+          from_date = config[:from_date]
+          to_date = from_date
+          stub_export(from_date, to_date)
+
+          actual = Mixpanel.guess(embulk_config(config))
+          assert_equal(expected, actual)
+        end
+
+        def test_no_from_date
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+          }
+
+          from_date = Date.today - 1 - Mixpanel::SLICE_DAYS_COUNT
+          to_date = Date.today - 1
+          stub_export(from_date, to_date)
+
+          actual = Mixpanel.guess(embulk_config(config))
+          assert_equal(expected, actual)
+        end
+
+        private
+
+        def stub_export(from_date, to_date)
+          params = {
+            api_key: API_KEY,
+            event: nil,
+            where: nil,
+            bucket: nil,
+            from_date: from_date.to_s,
+            to_date: to_date.to_s,
+          }
+
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).export(params) { records }
+          end
+        end
+
+        def embulk_config(config)
+          DataSource[*config.to_a.flatten(1)]
+        end
+
+        def expected
+          {
+            "columns" => [
+              {name: "event", type: :string},
+              {name: "foo", type: :string},
+              {name: "time", type: :long},
+              {name: "int", type: :long},
+            ]
+          }
+        end
       end
 
       class TransactionDateTest < self
@@ -270,6 +351,13 @@ module Embulk
       end
 
       class RunTest < self
+        def setup_client
+
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).export(anything) { records }
+          end
+        end
+
         def setup
           super
 
@@ -333,7 +421,7 @@ module Embulk
           api_secret: API_SECRET,
           timezone: TIMEZONE,
           schema: schema,
-          dates: DATES.to_a,
+          dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
         }
       end

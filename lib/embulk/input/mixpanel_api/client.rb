@@ -19,7 +19,12 @@ module Embulk
           # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
           params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
           params[:sig] = signature(params)
+
+          Embulk.logger.debug "Export param: #{params.to_s}"
+
           response = httpclient.get(ENDPOINT_EXPORT, params)
+
+          Embulk.logger.debug "response code: #{response.code}"
 
           if (400..499).include?(response.code)
             raise ConfigError, response.body
