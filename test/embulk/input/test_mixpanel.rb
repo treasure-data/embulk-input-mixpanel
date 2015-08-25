@@ -45,18 +45,61 @@ module Embulk
         stub(Embulk).logger { ::Logger.new(IO::NULL) }
       end
 
-      def test_guess
-        expected = {
-          "columns" => [
-            {name: "event", type: :string},
-            {name: "foo", type: :string},
-            {name: "time", type: :long},
-            {name: "int", type: :long},
-          ]
-        }
+      class GuessTest < self
+        def test_from_date_old_date
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            from_date: FROM_DATE,
+          }
 
-        actual = Mixpanel.guess(embulk_config)
-        assert_equal(expected, actual)
+
+          actual = Mixpanel.guess(embulk_config(config))
+          assert_equal(expected, actual)
+        end
+
+        def test_from_date_today
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            from_date: Date.today.to_s,
+          }
+
+          assert_raise(ConfigError) do
+            Mixpanel.guess(embulk_config(config))
+          end
+        end
+
+        def test_from_date_yesterday
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+            from_date: (Date.today - 1).to_s,
+          }
+
+          actual = Mixpanel.guess(embulk_config(config))
+          assert_equal(expected, actual)
+        end
+
+        private
+
+        def embulk_config(config)
+          DataSource[*config.to_a.flatten(1)]
+        end
+
+        def expected
+          {
+            "columns" => [
+              {name: "event", type: :string},
+              {name: "foo", type: :string},
+              {name: "time", type: :long},
+              {name: "int", type: :long},
+            ]
+          }
+        end
       end
 
       class TransactionDateTest < self
