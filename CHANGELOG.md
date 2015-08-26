@@ -1,3 +1,8 @@
+## 0.2.1 - 2015-08-26
+
+* [fixed] Fix guess with recently from date [#18](https://github.com/treasure-data/embulk-input-mixpanel/pull/18)
+* [fixed] Fix error handling when invalid date set given [#17](https://github.com/treasure-data/embulk-input-mixpanel/pull/17)
+
 ## 0.2.0 - 2015-08-17
 
 * [enhanement] Raise config error for unretryable [#15](https://github.com/treasure-data/embulk-input-mixpanel/pull/15) [[Reported by @muga](https://github.com/treasure-data/embulk-input-mixpanel/issues/11). Thanks!!]
