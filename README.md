@@ -36,7 +36,7 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 - **timezone**: project timezone(string, required)
 - **from_date**: From date to export (string, optional, default: today - 2)
   - NOTE: Mixpanel API supports to export data from at least 2 days before to at most the previous day.
-- **days**: Count of days range for exporting (integer, optional, default: from_date - (today - 1))
+- **fetch_days**: Count of days range for exporting (integer, optional, default: from_date - (today - 1))
   - NOTE: Mixpanel doesn't support to from_date > today - 2
 - **event**: The event or events to filter data (array, optional, default: nil)
 - **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
@@ -51,7 +51,7 @@ in:
   api_secret: "API_SECRET"
   timezone: "US/Pacific"
   from_date: "2015-07-19"
-  days: 5
+  fetch_days: 5
 ```
 
 ## Run test
