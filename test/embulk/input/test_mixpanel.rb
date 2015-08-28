@@ -10,7 +10,7 @@ module Embulk
       FROM_DATE = "2015-02-22".freeze
       TO_DATE = "2015-03-02".freeze
       DAYS = 8
-      DATES = Date.parse(FROM_DATE)..(Date.parse(FROM_DATE) + DAYS)
+      DATES = Date.parse(FROM_DATE)..(Date.parse(FROM_DATE) + DAYS - 1)
       TIMEZONE = "Asia/Tokyo".freeze
 
       DURATIONS = [
@@ -165,7 +165,7 @@ module Embulk
 
         def test_negative_days
           assert_raise(Embulk::ConfigError) do
-            Mixpanel.transaction(transaction_config((Date.today - 1).to_s).merge(days: -1))
+            Mixpanel.transaction(transaction_config((Date.today - 1).to_s).merge(fetch_days: -1))
           end
         end
 
@@ -213,7 +213,7 @@ module Embulk
           def transaction_config
             _config = config.merge(
               from_date: dates.first.to_s,
-              days: dates.to_a.size,
+              fetch_days: dates.to_a.size,
               timezone: TIMEZONE,
               columns: schema
             )
@@ -279,7 +279,7 @@ module Embulk
           def transaction_task(days)
             from_date = Date.parse(FROM_DATE)
             task.merge(
-              dates: (from_date..(from_date + days)).map {|date| date.to_s},
+              dates: (from_date..(from_date + days - 1)).map {|date| date.to_s},
               api_key: API_KEY,
               api_secret: API_SECRET,
               timezone: TIMEZONE,
@@ -289,7 +289,7 @@ module Embulk
 
           def transaction_config(days)
             _config = config.merge(
-              days: days,
+              fetch_days: days,
               columns: schema,
               timezone: TIMEZONE,
             )
@@ -449,7 +449,7 @@ module Embulk
           api_key: API_KEY,
           api_secret: API_SECRET,
           from_date: FROM_DATE,
-          days: DAYS,
+          fetch_days: DAYS,
         }
       end
 

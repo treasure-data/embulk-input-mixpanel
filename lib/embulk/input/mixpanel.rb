@@ -29,7 +29,7 @@ module Embulk
           Embulk.logger.warn "Mixpanel allow 2 days before to from_date, so no data is input."
           target_dates = []
         else
-          days = config.param(:days, :integer, default: nil)
+          days = config.param(:fetch_days, :integer, default: nil)
 
           if days.nil?
             # When no 'days' is specified in config file, so dates is
@@ -40,7 +40,7 @@ module Embulk
           else
             # When 'days' is specified in config file and it is satisfied,
             # so it is used for dates.
-            dates = from_date..(from_date + days)
+            dates = from_date..(from_date + days - 1)
           end
 
           target_dates = dates.find_all {|date| date < Date.today}
