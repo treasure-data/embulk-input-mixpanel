@@ -40,7 +40,7 @@ module Embulk
           else
             # When 'days' is specified in config file and it is satisfied,
             # so it is used for dates.
-            dates = from_date..(from_date + days)
+            dates = from_date..(from_date + days - 1)
           end
 
           target_dates = dates.find_all {|date| date < Date.today}

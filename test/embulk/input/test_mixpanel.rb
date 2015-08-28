@@ -10,7 +10,7 @@ module Embulk
       FROM_DATE = "2015-02-22".freeze
       TO_DATE = "2015-03-02".freeze
       DAYS = 8
-      DATES = Date.parse(FROM_DATE)..(Date.parse(FROM_DATE) + DAYS)
+      DATES = Date.parse(FROM_DATE)..(Date.parse(FROM_DATE) + DAYS - 1)
       TIMEZONE = "Asia/Tokyo".freeze
 
       DURATIONS = [
@@ -279,7 +279,7 @@ module Embulk
           def transaction_task(days)
             from_date = Date.parse(FROM_DATE)
             task.merge(
-              dates: (from_date..(from_date + days)).map {|date| date.to_s},
+              dates: (from_date..(from_date + days - 1)).map {|date| date.to_s},
               api_key: API_KEY,
               api_secret: API_SECRET,
               timezone: TIMEZONE,
