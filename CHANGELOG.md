@@ -1,4 +1,4 @@
-## 0.2.2 - 2015-08-31
+## 0.3.0 - 2015-08-31
 
 * [fixed] Fix the bug 1 day data can't be fetched [#21](https://github.com/treasure-data/embulk-input-mixpanel/pull/21)
 
