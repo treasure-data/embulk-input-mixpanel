@@ -1,5 +1,7 @@
 ## 0.3.0 - 2015-08-31
 
+This version breaks backword compatibility of mixpanel. `days` key in config was changed to `fetch_days`. For detail, please check README.md to modify your config.
+
 * [fixed] Fix the bug 1 day data can't be fetched [#21](https://github.com/treasure-data/embulk-input-mixpanel/pull/21)
 
 ## 0.2.1 - 2015-08-26
