@@ -1,3 +1,7 @@
+## 0.2.2 - 2015-08-31
+
+* [fixed] Fix the bug 1 day data can't be fetched [#21](https://github.com/treasure-data/embulk-input-mixpanel/pull/21)
+
 ## 0.2.1 - 2015-08-26
 
 * [fixed] Fix guess with recently from date [#18](https://github.com/treasure-data/embulk-input-mixpanel/pull/18)
