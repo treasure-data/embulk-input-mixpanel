@@ -47,7 +47,7 @@ module Embulk
 
           overtimes = dates.to_a - target_dates
           unless overtimes.empty?
-            Embulk.logger.warn "These dates are too early access, ignored them: #{overtimes.map(&:to_s).join(', ')}"
+            Embulk.logger.warn "These dates are too early access, ignored them: from #{overtimes.first} to #{overtimes.last}"
           end
         end
 
