@@ -193,8 +193,17 @@ module Embulk
             Mixpanel.transaction(transaction_config, &control)
           end
 
+          def test_info
+            stub(Mixpanel).resume(task.merge(dates: target_dates), columns, 1, &control)
+            mock(Embulk.logger).info(anything)
+            stub(Embulk.logger).warn
+
+            Mixpanel.transaction(transaction_config, &control)
+          end
+
           def test_warn
             stub(Mixpanel).resume(task.merge(dates: target_dates), columns, 1, &control)
+            stub(Embulk.logger).info
             mock(Embulk.logger).warn(anything)
 
             Mixpanel.transaction(transaction_config, &control)
