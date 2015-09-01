@@ -195,7 +195,9 @@ module Embulk
 
           def test_info
             stub(Mixpanel).resume(task.merge(dates: target_dates), columns, 1, &control)
-            mock(Embulk.logger).info(anything)
+
+            info_message_regexp = /#{Regexp.escape(target_dates.first)}.+#{Regexp.escape(target_dates.last)}/
+            mock(Embulk.logger).info(info_message_regexp)
             stub(Embulk.logger).warn
 
             Mixpanel.transaction(transaction_config, &control)
@@ -204,7 +206,10 @@ module Embulk
           def test_warn
             stub(Mixpanel).resume(task.merge(dates: target_dates), columns, 1, &control)
             stub(Embulk.logger).info
-            mock(Embulk.logger).warn(anything)
+
+            ignore_dates = dates.map{|date| date.to_s}.to_a - target_dates
+            warn_message_regexp = /#{Regexp.escape(ignore_dates.first)}.+#{Regexp.escape(ignore_dates.last)}/
+            mock(Embulk.logger).warn(warn_message_regexp)
 
             Mixpanel.transaction(transaction_config, &control)
           end
