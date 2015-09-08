@@ -1,3 +1,7 @@
+## 0.3.1 - 2015-09-08
+
+* [enhancement] Show ignore dates as range [#23](https://github.com/treasure-data/embulk-input-mixpanel/pull/23) [[Reported by @muga](https://github.com/treasure-data/embulk-input-mixpanel/issues/20). Thanks!!]
+
 ## 0.3.0 - 2015-08-31
 
 This version breaks backword compatibility of mixpanel. `days` key in config was changed to `fetch_days`. For detail, please check README.md to modify your config.
