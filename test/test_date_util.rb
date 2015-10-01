@@ -1,3 +1,5 @@
+require "date_util"
+
 class DateUtilTest < Test::Unit::TestCase
   class ValidateTest < self
     def test_invalid_from_date
