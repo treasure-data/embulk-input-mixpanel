@@ -18,6 +18,7 @@ class DateUtilTest < Test::Unit::TestCase
 
     def test_invalid_timezone
       util = DateUtil.new("2010-01-01", 1, invalid_timezone)
+      mock(Embulk.logger).error(/#{Regexp.new(invalid_timezone)}/)
       assert_raise(Embulk::ConfigError) do
         util.validate
       end

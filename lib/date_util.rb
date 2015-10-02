@@ -7,6 +7,12 @@ class DateUtil
     @timezone = timezone
   end
 
+  def generate_range
+    validate
+    show_warnings
+    range_only_past.map{|date| date.to_s}
+  end
+
   def from_date
     Date.parse(from_date_str)
   end
@@ -32,9 +38,17 @@ class DateUtil
     end
   end
 
-  def range
-    validate
+  def show_warnings
+    if from_date_too_early?
+      Embulk.logger.warn "Mixpanel allow 2 days before to from_date, so no data is input."
+    end
 
+    if overdays?
+      Embulk.logger.warn "These dates are too early access, ignored them: from #{overdays.first} to #{overdays.last}"
+    end
+  end
+
+  def range
     if from_date_too_early?
       return []
     end

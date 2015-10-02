@@ -1,5 +1,6 @@
 require "tzinfo"
 require "embulk/input/mixpanel_api/client"
+require "date_util"
 
 module Embulk
   module Input
@@ -64,26 +65,22 @@ module Embulk
 
         Embulk.logger.info "Try to fetch data from #{target_dates.first} to #{target_dates.last}"
 
-        overtimes = dates.to_a - target_dates
-        unless overtimes.empty?
-          Embulk.logger.warn "These dates are too early access, ignored them: from #{overtimes.first} to #{overtimes.last}"
-        end
-
         target_dates.map(&:to_s)
       end
 
       def self.transaction(config, &control)
-        raw_values = {
-          from_date: config.param(:from_date, :string, default: (Date.today - 2).to_s),
-          fetch_days: config.param(:fetch_days, :integer, default: nil),
-          timezone: config.param(:timezone, :string),
-        }
-        validate_config(raw_values)
+        from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
+        fetch_days = config.param(:fetch_days, :integer, default: nil)
+        timezone = config.param(:timezone, :string)
+
+        date_util = DateUtil.new(from_date, fetch_days, timezone)
+        range = date_util.generate_range
+        Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
         task = {
           params: export_params(config),
-          dates: generate_target_dates(raw_values[:from_date], raw_values[:fetch_days]),
-          timezone: raw_values[:timezone],
+          dates: range,
+          timezone: timezone,
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
