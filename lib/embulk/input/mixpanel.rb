@@ -1,6 +1,6 @@
 require "tzinfo"
 require "embulk/input/mixpanel_api/client"
-require "date_util"
+require "range_generator"
 require "timezone_validator"
 
 module Embulk

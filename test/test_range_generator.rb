@@ -1,4 +1,4 @@
-require "date_util"
+require "range_generator"
 
 class RangeGeneratorTest < Test::Unit::TestCase
   class GenerateRangeTest < self
