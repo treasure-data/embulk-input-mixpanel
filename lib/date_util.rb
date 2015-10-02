@@ -13,6 +13,8 @@ class DateUtil
     range_only_past.map{|date| date.to_s}
   end
 
+  private
+
   def from_date
     Date.parse(from_date_str)
   end

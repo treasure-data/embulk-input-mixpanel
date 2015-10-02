@@ -1,79 +1,68 @@
 require "date_util"
 
 class DateUtilTest < Test::Unit::TestCase
-  class ValidateTest < self
-    def test_invalid_from_date
-      util = DateUtil.new("aaaaaaaaa", 1, valid_timezone)
+  class GenerateRangeTest < self
+    data do
+      valid_timezone = "Asia/Tokyo"
+
+      {
+        from_date: ["aaaaaaaaa", 1, valid_timezone],
+        fetch_days: ["2010-01-01", -9, valid_timezone],
+      }
+    end
+    def test_invalid(args)
       assert_raise(Embulk::ConfigError) do
-        util.validate
+        generate_range(*args)
       end
     end
 
-    def test_invalid_fetch_days
-      util = DateUtil.new("2010-01-01", -9, valid_timezone)
-      assert_raise(Embulk::ConfigError) do
-        util.validate
-      end
-    end
-
+    # TODO: timezone validation should be moved to othe class
     def test_invalid_timezone
-      util = DateUtil.new("2010-01-01", 1, invalid_timezone)
       mock(Embulk.logger).error(/#{Regexp.new(invalid_timezone)}/)
       assert_raise(Embulk::ConfigError) do
-        util.validate
-      end
-    end
-  end
-
-  class RangeTest < self
-    def setup
-    end
-
-    class AllPastTest < self
-      def setup
-        @from = Date.parse("2010-01-01")
-        @days = 5
-        @util = DateUtil.new("2010-01-01", 5, valid_timezone)
-      end
-
-      def test_range
-        assert_equal @util.range, @from..Date.parse("2010-01-05")
-      end
-
-      def test_overdays
-        assert_equal @util.overdays, []
-      end
-
-      def test_overdays?
-        assert_equal @util.overdays?, false
-      end
-
-      def test_from_date_too_early?
-        assert_equal @util.from_date_too_early?, false
+        generate_range("2010-01-01", 1, invalid_timezone)
       end
     end
 
-    class OverdaysTest < self
+    def test_all_days_past
+      days = 5
+      from = "2010-01-01"
+      expected_from = Date.parse(from)
+      expected_to = Date.parse("2010-01-05")
+
+      expected = (expected_from..expected_to).to_a.map{|date| date.to_s}
+
+      actual = DateUtil.new(from, days, valid_timezone).generate_range
+
+      assert_equal(expected, actual)
+    end
+
+    class OverDaysTest < self
       def setup
         @from = Date.today - 5
         @days = 10
-        @util = DateUtil.new(@from.to_s, @days, valid_timezone)
+        @warn_message_regexp = /ignored them/
       end
 
       def test_range_only_past
-        assert_equal @util.range_only_past, @util.range.find_all{|d| d < Date.today}
+        expected_to = Date.today - 1
+        expected = (@from..expected_to).to_a.map{|date| date.to_s}
+
+        stub(Embulk.logger).warn(@warn_message_regexp)
+
+        assert_equal(expected, generate_range)
       end
 
-      def test_overdays
-        assert_equal @util.overdays, @util.range.find_all{|d| d >= Date.today}
+      def test_warn
+        mock(Embulk.logger).warn(@warn_message_regexp)
+
+        generate_range
       end
 
-      def test_overdays?
-        assert @util.overdays?
-      end
+      private
 
-      def test_from_date_too_early?
-        assert_equal @util.from_date_too_early?, false
+      def generate_range
+        super(@from.to_s, @days, valid_timezone)
       end
     end
 
@@ -81,20 +70,40 @@ class DateUtilTest < Test::Unit::TestCase
       def setup
         @from = Date.today + 5
         @days = 10
-        @util = DateUtil.new(@from.to_s, @days, valid_timezone)
+        @warn_message_regexp = /allow 2 days/
       end
 
-      def test_from_date_too_early?
-        assert @util.from_date_too_early?
+      def test_empty_range
+        stub(Embulk.logger).warn(@warn_message_regexp)
+
+        assert_equal([], generate_range)
+      end
+
+      def test_warn
+        mock(Embulk.logger).warn(@warn_message_regexp)
+
+        generate_range
+      end
+
+      private
+
+      def generate_range
+        super(@from.to_s, @days, valid_timezone)
       end
     end
-  end
 
-  def valid_timezone
-    "Asia/Tokyo"
-  end
+    private
 
-  def invalid_timezone
-    "Asia/Tokyoooooooooooooo"
+    def valid_timezone
+      "Asia/Tokyo"
+    end
+
+    def invalid_timezone
+      "Asia/Tokyoooooooooooooo"
+    end
+
+    def generate_range(from_date_str, fetch_days, timezone)
+      DateUtil.new(from_date_str, fetch_days, timezone).generate_range
+    end
   end
 end
