@@ -1,6 +1,6 @@
 require "date_util"
 
-class DateUtilTest < Test::Unit::TestCase
+class RangeGeneratorTest < Test::Unit::TestCase
   class GenerateRangeTest < self
     data do
       {
@@ -22,7 +22,7 @@ class DateUtilTest < Test::Unit::TestCase
 
       expected = (expected_from..expected_to).to_a.map{|date| date.to_s}
 
-      actual = DateUtil.new(from, days).generate_range
+      actual = RangeGenerator.new(from, days).generate_range
 
       assert_equal(expected, actual)
     end
@@ -85,7 +85,7 @@ class DateUtilTest < Test::Unit::TestCase
     private
 
     def generate_range(from_date_str, fetch_days)
-      DateUtil.new(from_date_str, fetch_days).generate_range
+      RangeGenerator.new(from_date_str, fetch_days).generate_range
     end
   end
 end

@@ -76,8 +76,8 @@ module Embulk
 
         TimezoneValidator.new(timezone).validate
 
-        date_util = DateUtil.new(from_date, fetch_days)
-        range = date_util.generate_range
+        range_generator = RangeGenerator.new(from_date, fetch_days)
+        range = range_generator.generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
         task = {

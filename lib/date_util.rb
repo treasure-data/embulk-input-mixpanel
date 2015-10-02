@@ -1,4 +1,4 @@
-class DateUtil
+class RangeGenerator
   attr_reader :from_date_str, :fetch_days
 
   def initialize(from_date_str, fetch_days)
