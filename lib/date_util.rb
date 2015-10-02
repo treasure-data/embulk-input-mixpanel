@@ -1,10 +1,9 @@
 class DateUtil
-  attr_reader :from_date_str, :fetch_days, :timezone
+  attr_reader :from_date_str, :fetch_days
 
-  def initialize(from_date_str, fetch_days, timezone)
+  def initialize(from_date_str, fetch_days)
     @from_date_str = from_date_str
     @fetch_days = fetch_days
-    @timezone = timezone
   end
 
   def generate_range
@@ -29,14 +28,6 @@ class DateUtil
     if fetch_days && fetch_days < 1
       # `days` only allowed nil or positive number
       raise Embulk::ConfigError, "fetch_days '#{fetch_days}' is invalid. Please specify bigger number than 0."
-    end
-
-    begin
-      # raises exception if timezone is invalid string
-      TZInfo::Timezone.get(timezone)
-    rescue => e
-      Embulk.logger.error "'#{timezone}' is invalid timezone"
-      raise Embulk::ConfigError, e.message
     end
   end
 

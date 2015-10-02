@@ -1,6 +1,7 @@
 require "tzinfo"
 require "embulk/input/mixpanel_api/client"
 require "date_util"
+require "timezone_validator"
 
 module Embulk
   module Input
@@ -73,7 +74,9 @@ module Embulk
         fetch_days = config.param(:fetch_days, :integer, default: nil)
         timezone = config.param(:timezone, :string)
 
-        date_util = DateUtil.new(from_date, fetch_days, timezone)
+        TimezoneValidator.new(timezone).validate
+
+        date_util = DateUtil.new(from_date, fetch_days)
         range = date_util.generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
