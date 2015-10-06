@@ -1,10 +1,13 @@
 require "prepare_embulk"
+require "override_assert_raise"
 require "embulk/input/mixpanel"
 require "json"
 
 module Embulk
   module Input
     class MixpanelTest < Test::Unit::TestCase
+      include OverrideAssertRaise
+
       API_KEY = "api_key".freeze
       API_SECRET = "api_secret".freeze
       FROM_DATE = "2015-02-22".freeze

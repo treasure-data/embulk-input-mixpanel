@@ -24,61 +24,23 @@ rvm:
   - jruby-9.0.0.0
 
 gemfile:
-  - gemfiles/embulk-0.6.0-latest
-  - gemfiles/embulk-0.6.16
-  - gemfiles/embulk-0.6.17
-  - gemfiles/embulk-0.6.18
-  - gemfiles/embulk-0.6.19
-  - gemfiles/embulk-0.6.20
-  - gemfiles/embulk-0.6.21
-  - gemfiles/embulk-0.6.22
-  - gemfiles/embulk-0.6.23
-  - gemfiles/embulk-0.6.24
-  - gemfiles/embulk-0.6.25
-  - gemfiles/embulk-0.6.26
-  - gemfiles/embulk-0.6.27
-  - gemfiles/embulk-0.7.0
-  - gemfiles/embulk-0.7.0-latest
-  - gemfiles/embulk-0.7.1
-  - gemfiles/embulk-0.7.2
-  - gemfiles/embulk-0.7.3
-  - gemfiles/embulk-0.7.4
-  - gemfiles/embulk-0.7.5
-  - gemfiles/embulk-latest
+<% versions.each do |file| -%>
+  - gemfiles/<%= file %>
+<% end -%>
 
 matrix:
   exclude:
     - jdk: oraclejdk8 # Ignore all matrix at first, use `include` to allow build
   include:
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.0-latest}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.16}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.17}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.18}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.19}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.20}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.21}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.22}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.23}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.24}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.25}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.26}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.27}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.0}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.0-latest}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.1}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.2}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.3}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.4}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.5}
-    - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-latest}
-    
+    <% matrix.each do |m| -%>
+<%= m %>
+    <% end %>
 
   allow_failures:
     - gemfile: gemfiles/embulk-0.6.22
     - gemfile: gemfiles/embulk-0.7.0
     - gemfile: gemfiles/embulk-0.7.1
     # Ignore failure for *-latest
-    - gemfile: embulk-0.6.0-latest
-    - gemfile: embulk-0.7.0-latest
-    - gemfile: embulk-latest
-    
+    <% versions.find_all{|file| file.to_s.match(/-latest/)}.each do |file| -%>
+- gemfile: <%= file %>
+    <% end %>

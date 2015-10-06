@@ -27,7 +27,7 @@ module Embulk
           Embulk.logger.debug "response code: #{response.code}"
 
           if (400..499).include?(response.code)
-            raise ConfigError, response.body
+            raise ConfigError.new response.body
           elsif response.code >= 500
             raise RuntimeError, response.body
           end
