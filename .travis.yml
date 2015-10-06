@@ -51,9 +51,6 @@ matrix:
     - jdk: oraclejdk8 # Ignore all matrix at first, use `include` to allow build
   include:
     - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.0-latest}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.13}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.14}
-    - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.15}
     - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.16}
     - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.17}
     - {rvm: jruby-19mode, gemfile: gemfiles/embulk-0.6.18}
