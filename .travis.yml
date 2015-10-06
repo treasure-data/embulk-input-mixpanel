@@ -71,6 +71,8 @@ matrix:
     - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.4}
     - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-0.7.5}
     - {rvm: jruby-9.0.0.0, gemfile: gemfiles/embulk-latest}
+    
+
   allow_failures:
     - gemfile: gemfiles/embulk-0.6.22
     - gemfile: gemfiles/embulk-0.7.0
@@ -79,3 +81,4 @@ matrix:
     - gemfile: embulk-0.6.0-latest
     - gemfile: embulk-0.7.0-latest
     - gemfile: embulk-latest
+    
