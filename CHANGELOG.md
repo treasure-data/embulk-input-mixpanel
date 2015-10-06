@@ -1,3 +1,7 @@
+## 0.3.2 - 2015-10-06
+
+* [enhancement] Support embulk 0.7 [#25](https://github.com/treasure-data/embulk-input-mixpanel/pull/25)
+
 ## 0.3.1 - 2015-09-08
 
 * [enhancement] Show ignore dates as range [#23](https://github.com/treasure-data/embulk-input-mixpanel/pull/23) [[Reported by @muga](https://github.com/treasure-data/embulk-input-mixpanel/issues/20). Thanks!!]
