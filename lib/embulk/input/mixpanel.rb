@@ -80,12 +80,12 @@ module Embulk
       end
 
       def self.resume(task, columns, count, &control)
-        commit_reports = yield(task, columns, count)
+        task_reports = yield(task, columns, count)
 
         # NOTE: If this plugin supports to run by multi threads, this
         # implementation is terrible.
-        commit_report = commit_reports.first
-        next_to_date = Date.parse(commit_report[:to_date]).next
+        task_report = task_reports.first
+        next_to_date = Date.parse(task_report[:to_date]).next
 
         next_config_diff = {from_date: next_to_date.to_s}
         return next_config_diff
@@ -170,8 +170,8 @@ module Embulk
 
         page_builder.finish
 
-        commit_report = {to_date: @dates.last || (Date.today - 1)}
-        return commit_report
+        task_report = {to_date: @dates.last || (Date.today - 1)}
+        return task_report
       end
 
       private
