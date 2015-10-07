@@ -16,14 +16,12 @@ module Embulk
       SLICE_DAYS_COUNT = 7
 
       def self.transaction(config, &control)
-        from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
-        fetch_days = config.param(:fetch_days, :integer, default: nil)
         timezone = config.param(:timezone, :string)
-
         TimezoneValidator.new(timezone).validate
 
-        range_generator = RangeGenerator.new(from_date, fetch_days)
-        range = range_generator.generate_range
+        from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
+        fetch_days = config.param(:fetch_days, :integer, default: nil)
+        range = RangeGenerator.new(from_date, fetch_days).generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
         task = {
@@ -35,12 +33,11 @@ module Embulk
           schema: config.param(:columns, :array),
         }
 
-        columns = []
-        task[:schema].each do |column|
+        columns = task[:schema].map do |column|
           name = column["name"]
           type = column["type"].to_sym
 
-          columns << Column.new(nil, name, type, column["format"])
+          Column.new(nil, name, type, column["format"])
         end
 
         resume(task, columns, 1, &control)
