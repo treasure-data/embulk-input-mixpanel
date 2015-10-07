@@ -50,6 +50,11 @@ module Embulk
       end
 
       class GuessTest < self
+        def setup
+          # Do nothing from parent
+          mute_warn
+        end
+
         def test_from_date_old_date
           config = {
             type: "mixpanel",
@@ -58,9 +63,8 @@ module Embulk
             from_date: FROM_DATE,
           }
 
-          from_date = config[:from_date]
-          to_date = Date.parse(from_date) + Mixpanel::SLICE_DAYS_COUNT
-          stub_export(from_date, to_date)
+          stub_export_all
+          mock(Embulk.logger).info(/^Guessing.*#{Regexp.escape FROM_DATE}\.\./)
 
           actual = Mixpanel.guess(embulk_config(config))
           assert_equal(expected, actual)
@@ -74,25 +78,25 @@ module Embulk
             from_date: Date.today.to_s,
           }
 
-          assert_raise(ConfigError) do
-            Mixpanel.guess(embulk_config(config))
-          end
+          stub_export_all
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
+
+          Mixpanel.guess(embulk_config(config))
         end
 
         def test_from_date_yesterday
+          from_date = (Date.today - 1).to_s
           config = {
             type: "mixpanel",
             api_key: API_KEY,
             api_secret: API_SECRET,
-            from_date: (Date.today - 1).to_s,
+            from_date: from_date,
           }
 
-          from_date = config[:from_date]
-          to_date = from_date
-          stub_export(from_date, to_date)
+          stub_export_all
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape from_date}/)
 
-          actual = Mixpanel.guess(embulk_config(config))
-          assert_equal(expected, actual)
+          Mixpanel.guess(embulk_config(config))
         end
 
         def test_no_from_date
@@ -102,29 +106,22 @@ module Embulk
             api_secret: API_SECRET,
           }
 
-          from_date = Date.today - 1 - Mixpanel::SLICE_DAYS_COUNT
-          to_date = Date.today - 1
-          stub_export(from_date, to_date)
+          stub_export_all
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
 
-          actual = Mixpanel.guess(embulk_config(config))
-          assert_equal(expected, actual)
+          Mixpanel.guess(embulk_config(config))
         end
 
         private
 
-        def stub_export(from_date, to_date)
-          params = {
-            api_key: API_KEY,
-            event: nil,
-            where: nil,
-            bucket: nil,
-            from_date: from_date.to_s,
-            to_date: to_date.to_s,
-          }
-
+        def stub_export_all
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).export(params) { records }
+            stub(klass).export(anything) { records }
           end
+        end
+
+        def mute_warn
+          stub(Embulk.logger).warn(anything) {}
         end
 
         def embulk_config(config)
