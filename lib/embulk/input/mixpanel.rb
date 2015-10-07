@@ -58,28 +58,24 @@ module Embulk
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
 
-        from_date_str = config.param(:from_date, :string, default: (Date.today - 1 - SLICE_DAYS_COUNT).to_s)
-
-        from_date = Date.parse(from_date_str)
-
-        if from_date > Date.today - 1
-          raise ConfigError.new "Please specify date later than yesterday (inclusive) as 'from_date'"
+        from_date = config.param(:from_date, :string, default: default_guess_start_date.to_s)
+        fetch_days = config.param(:fetch_days, :integer, default: SLICE_DAYS_COUNT)
+        range = RangeGenerator.new(from_date, fetch_days).generate_range
+        if range.empty?
+          range = default_guess_start_date..(Date.today - 1)
         end
 
-        # NOTE: to_date is yeasterday if from_date..Date.Today doesn't have
-        # more SLICE_DAYS_COUNT days.
-        to_date = [from_date + SLICE_DAYS_COUNT, Date.today - 1].min
+        Embulk.logger.info "Guessing schema using #{range.first}..#{range.last} records"
 
-        params = export_params(config)
-        params = params.merge(
-          from_date: from_date.to_s,
-          to_date: to_date.to_s,
+        params = export_params(config).merge(
+          from_date: range.first,
+          to_date: range.last,
         )
 
         records = client.export(params)
-        sample_records = records.first(GUESS_RECORDS_COUNT)
-        properties = Guess::SchemaGuess.from_hash_records(sample_records.map{|r| r["properties"]})
-        columns = properties.map do |col|
+        sample_props = records.first(GUESS_RECORDS_COUNT).map{|r| r["properties"]}
+        schema = Guess::SchemaGuess.from_hash_records(sample_props)
+        columns = schema.map do |col|
           result = {
             name: col.name,
             type: col.type,
@@ -170,6 +166,10 @@ module Embulk
           where: config.param(:where, :string, default: nil),
           bucket: config.param(:bucket, :string, default: nil),
         }
+      end
+
+      def self.default_guess_start_date
+        Date.today - SLICE_DAYS_COUNT - 1
       end
     end
 
