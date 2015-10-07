@@ -58,13 +58,7 @@ module Embulk
       def self.guess(config)
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
 
-        from_date = config.param(:from_date, :string, default: default_guess_start_date.to_s)
-        fetch_days = config.param(:fetch_days, :integer, default: SLICE_DAYS_COUNT)
-        range = RangeGenerator.new(from_date, fetch_days).generate_range
-        if range.empty?
-          range = default_guess_start_date..(Date.today - 1)
-        end
-
+        range = guess_range(config)
         Embulk.logger.info "Guessing schema using #{range.first}..#{range.last} records"
 
         params = export_params(config).merge(
@@ -170,6 +164,16 @@ module Embulk
 
       def self.default_guess_start_date
         Date.today - SLICE_DAYS_COUNT - 1
+      end
+
+      def self.guess_range(config)
+        from_date = config.param(:from_date, :string, default: default_guess_start_date.to_s)
+        fetch_days = config.param(:fetch_days, :integer, default: SLICE_DAYS_COUNT)
+        range = RangeGenerator.new(from_date, fetch_days).generate_range
+        if range.empty?
+          return default_guess_start_date..(Date.today - 1)
+        end
+        range
       end
     end
 
