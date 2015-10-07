@@ -1,9 +1,12 @@
 require "embulk/input/mixpanel_api/client"
+require "override_assert_raise"
 
 module Embulk
   module Input
     module MixpanelApi
       class ClientTest < Test::Unit::TestCase
+        include OverrideAssertRaise
+
         API_KEY = "api_key".freeze
         API_SECRET = "api_secret".freeze
 
