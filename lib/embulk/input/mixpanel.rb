@@ -66,18 +66,7 @@ module Embulk
           to_date: range.last,
         )
 
-        records = client.export(params)
-        sample_props = records.first(GUESS_RECORDS_COUNT).map{|r| r["properties"]}
-        schema = Guess::SchemaGuess.from_hash_records(sample_props)
-        columns = schema.map do |col|
-          result = {
-            name: col.name,
-            type: col.type,
-          }
-          result[:format] = col.format if col.format
-          result
-        end
-        columns.unshift(name: "event", type: :string)
+        columns = guess_from_records(client.export(params))
         return {"columns" => columns}
       end
 
@@ -174,6 +163,20 @@ module Embulk
           return default_guess_start_date..(Date.today - 1)
         end
         range
+      end
+
+      def self.guess_from_records(records)
+        sample_props = records.first(GUESS_RECORDS_COUNT).map{|r| r["properties"]}
+        schema = Guess::SchemaGuess.from_hash_records(sample_props)
+        columns = schema.map do |col|
+          result = {
+            name: col.name,
+            type: col.type,
+          }
+          result[:format] = col.format if col.format
+          result
+        end
+        columns.unshift(name: "event", type: :string)
       end
     end
 
