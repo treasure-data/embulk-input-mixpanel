@@ -1,6 +1,9 @@
 require "range_generator"
+require "override_assert_raise"
 
 class RangeGeneratorTest < Test::Unit::TestCase
+  include OverrideAssertRaise
+
   class GenerateRangeTest < self
     data do
       {

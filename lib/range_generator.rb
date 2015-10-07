@@ -22,12 +22,12 @@ class RangeGenerator
     begin
       from_date
     rescue ArgumentError # invalid date
-      raise Embulk::ConfigError, "from_date '#{from_date_str}' is invalid date"
+      raise Embulk::ConfigError.new "from_date '#{from_date_str}' is invalid date"
     end
 
     if fetch_days && fetch_days < 1
       # `days` only allowed nil or positive number
-      raise Embulk::ConfigError, "fetch_days '#{fetch_days}' is invalid. Please specify bigger number than 0."
+      raise Embulk::ConfigError.new "fetch_days '#{fetch_days}' is invalid. Please specify bigger number than 0."
     end
   end
 

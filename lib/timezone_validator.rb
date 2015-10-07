@@ -9,7 +9,7 @@ class TimezoneValidator
       TZInfo::Timezone.get(@timezone)
     rescue => e
       Embulk.logger.error "'#{@timezone}' is invalid timezone"
-      raise Embulk::ConfigError, e.message
+      raise Embulk::ConfigError.new e.message
     end
   end
 end
