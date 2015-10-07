@@ -101,20 +101,10 @@ module Embulk
       end
 
       def run
-        client = MixpanelApi::Client.new(@api_key, @api_secret)
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
-          from_date = dates.first
-          to_date = dates.last
-          Embulk.logger.info "Fetching data from #{from_date} to #{to_date} ..."
+          Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
-          params = @params.merge(
-            "from_date" => from_date,
-            "to_date" => to_date
-          )
-
-          records = client.export(params)
-
-          records.each do |record|
+          fetch(dates).each do |record|
             values = @schema.map do |column|
               case column["name"]
               when "event"
@@ -139,6 +129,17 @@ module Embulk
       end
 
       private
+
+      def fetch(dates)
+        from_date = dates.first
+        to_date = dates.last
+        params = @params.merge(
+          "from_date" => from_date,
+          "to_date" => to_date,
+        )
+        client = MixpanelApi::Client.new(@api_key, @api_secret)
+        client.export(params)
+      end
 
       def adjust_timezone(epoch)
         # Adjust timezone offset to get UTC time
