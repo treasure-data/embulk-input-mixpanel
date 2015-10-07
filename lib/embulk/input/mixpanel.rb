@@ -105,18 +105,7 @@ module Embulk
           Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
           fetch(dates).each do |record|
-            values = @schema.map do |column|
-              case column["name"]
-              when "event"
-                record["event"]
-              when "time"
-                time = record["properties"]["time"]
-                adjust_timezone(time)
-              else
-                record["properties"][column["name"]]
-              end
-            end
-            page_builder.add(values)
+            page_builder.add(extract_values(record))
           end
 
           break if preview?
@@ -129,6 +118,20 @@ module Embulk
       end
 
       private
+
+      def extract_values(record)
+        @schema.map do |column|
+          case column["name"]
+          when "event"
+            record["event"]
+          when "time"
+            time = record["properties"]["time"]
+            adjust_timezone(time)
+          else
+            record["properties"][column["name"]]
+          end
+        end
+      end
 
       def fetch(dates)
         from_date = dates.first
