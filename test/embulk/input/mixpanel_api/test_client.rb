@@ -89,6 +89,69 @@ module Embulk
             end
           end
 
+          class ExportRetryTest < self
+            def setup
+              @httpclient = HTTPClient.new
+              @client = Client.new(API_KEY, API_SECRET)
+              @retry_initial_wait_sec = 1
+              @retry_limit = 3
+              stub_client
+            end
+
+            def test_retry_with_500
+              stub_response(failure_response(500))
+
+              @retry_limit.times do |n|
+                mock(@client).sleep(@retry_initial_wait_sec * (2**n))
+              end
+              mock(Embulk.logger).warn(/retry/i).times(@retry_limit)
+              mock(Embulk.logger).error(/retry/i).once
+
+              assert_raise do
+                @client.export_with_retry(params, @retry_initial_wait_sec, @retry_limit)
+              end
+            end
+
+            def test_retry_with_timeout
+              @httpclient.connect_timeout = 0.000000000000000000001
+
+              @retry_limit.times do |n|
+                mock(@client).sleep(@retry_initial_wait_sec * (2**n))
+              end
+              mock(Embulk.logger).warn(/retry/i).times(@retry_limit)
+              mock(Embulk.logger).error(/retry/i).once
+
+              assert_raise(HTTPClient::TimeoutError) do
+                @client.export_with_retry(params, @retry_initial_wait_sec, @retry_limit)
+              end
+            end
+
+            def test_not_retry_with_401
+              @httpclient.test_loopback_http_response << "HTTP/1.1 401\r\n\r\n"
+              mock(Embulk.logger).warn(/retry/i).never
+              mock(Embulk.logger).error(/retry/i).never
+
+              assert_raise(Embulk::ConfigError) do
+                @client.export_with_retry(params, 0, 1).each do |record|
+                  record
+                end
+              end
+            end
+
+            def test_not_retry_with_invalid_json
+              @httpclient.test_loopback_http_response << "HTTP/1.1 200\r\n\r\ninvalid json"
+              mock(Embulk.logger).warn(/retry/i).never
+              mock(Embulk.logger).error(/retry/i).never
+
+              assert_raise(Embulk::DataError) do
+                @client.export_with_retry(params, 0, 1).each do |record|
+                  # DataError will raised in each block
+                  record
+                end
+              end
+            end
+          end
+
           private
 
           def stub_client

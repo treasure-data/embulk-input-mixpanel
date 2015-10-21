@@ -150,7 +150,7 @@ module Embulk
           "to_date" => to_date,
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        client.export(params)
+        client.export_with_retry(params, task[:retry_initial_wait_sec], task[:retry_limit])
       end
 
       def adjust_timezone(epoch)

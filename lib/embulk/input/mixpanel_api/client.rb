@@ -15,6 +15,12 @@ module Embulk
           @api_secret = api_secret
         end
 
+        def export_with_retry(params = {}, retry_initial_wait_sec, retry_limit)
+          with_retry(retry_initial_wait_sec, retry_limit) do
+            export(params)
+          end
+        end
+
         def export(params = {})
           # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
           params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
@@ -22,25 +28,53 @@ module Embulk
 
           Embulk.logger.debug "Export param: #{params.to_s}"
 
+          body = request(params)
+
+          Enumerator.new do |y|
+            body.lines.each do |json|
+              begin
+                y << JSON.parse(json)
+              rescue => e
+                raise Embulk::DataError.new(e.message)
+              end
+            end
+          end
+        end
+
+        private
+
+        def request(params)
           response = httpclient.get(ENDPOINT_EXPORT, params)
-
           Embulk.logger.debug "response code: #{response.code}"
-
           case response.code
           when 400..499
             raise ConfigError.new response.body
           when 500..599
             raise RuntimeError, response.body
           end
-
-          Enumerator.new do |y|
-            response.body.lines.each do |json|
-              y << JSON.parse(json)
-            end
-          end
+          response.body
         end
 
-        private
+        def with_retry(initial_wait, retry_limit, &block)
+          retry_count = 0
+          wait_sec = initial_wait
+          begin
+            yield
+          rescue Embulk::ConfigError, Embulk::DataError => e
+            # Don't retry
+            raise e
+          rescue => e
+            if retry_limit <= retry_count
+              Embulk.logger.error "'#{e}(#{e.class})' error occured and reached retry count (#{retry_limit} times)"
+              raise e
+            end
+            retry_count += 1
+            Embulk.logger.warn "'#{e}(#{e.class})' error occured. sleep and retry (#{retry_count}/#{retry_limit})"
+            sleep wait_sec
+            wait_sec *= 2
+            retry
+          end
+        end
 
         def signature(params)
           # https://mixpanel.com/docs/api-documentation/data-export-api#auth-implementation
