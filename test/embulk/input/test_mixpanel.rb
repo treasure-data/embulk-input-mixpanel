@@ -450,7 +450,7 @@ module Embulk
           private
 
           def task
-            super.merge(schema: schema)
+            super.merge(schema: schema, fetch_unknown_columns: true)
           end
 
           def schema
@@ -486,6 +486,7 @@ module Embulk
           schema: schema,
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
+          fetch_unknown_columns: false
         }
       end
 
@@ -513,6 +514,7 @@ module Embulk
           api_secret: API_SECRET,
           from_date: FROM_DATE,
           fetch_days: DAYS,
+          fetch_unknown_columns: false,
         }
       end
 

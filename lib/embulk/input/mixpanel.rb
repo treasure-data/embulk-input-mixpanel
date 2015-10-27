@@ -32,6 +32,7 @@ module Embulk
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
+          fetch_unknown_columns: config.param(:fetch_unknown_columns, :bool, default: true),
         }
 
         columns = task[:schema].map do |column|
@@ -81,6 +82,7 @@ module Embulk
         @timezone = task[:timezone]
         @schema = task[:schema]
         @dates = task[:dates]
+        @fetch_unknown_columns = task[:fetch_unknown_columns]
       end
 
       def run
@@ -89,7 +91,7 @@ module Embulk
 
           fetch(dates).each.with_index do |record, i|
             values = extract_values(record)
-            if true # TODO: switch by configuration parameter
+            if @fetch_unknown_columns
               unknown_values = extract_unknown_values(record)
               values << unknown_values.to_json
             end
