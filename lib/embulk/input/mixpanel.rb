@@ -9,6 +9,7 @@ module Embulk
       Plugin.register_input("mixpanel", self)
 
       GUESS_RECORDS_COUNT = 10
+      NOT_PROPERTY_COLUMN = "event".freeze
 
       # NOTE: It takes long time to fetch data between from_date to
       # to_date by one API request. So this plugin fetches data
@@ -114,8 +115,8 @@ module Embulk
 
       def extract_value(record, name)
         case name
-        when "event"
-          record["event"]
+        when NOT_PROPERTY_COLUMN
+          record[NOT_PROPERTY_COLUMN]
         when "time"
           time = record["properties"]["time"]
           adjust_timezone(time)
@@ -125,7 +126,7 @@ module Embulk
       end
 
       def extract_unknown_values(record)
-        record_keys = record["properties"].keys + ["event"]
+        record_keys = record["properties"].keys + [NOT_PROPERTY_COLUMN]
         schema_keys = @schema.map {|column| column["name"]}
         unknown_keys = record_keys - schema_keys
 
@@ -203,7 +204,7 @@ module Embulk
           result[:format] = col.format if col.format
           result
         end
-        columns.unshift(name: "event", type: :string)
+        columns.unshift(name: NOT_PROPERTY_COLUMN, type: :string)
       end
     end
 
