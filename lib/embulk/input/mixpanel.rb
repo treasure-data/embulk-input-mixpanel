@@ -89,7 +89,7 @@ module Embulk
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
-          fetch(dates).each.with_index do |record, i|
+          fetch(dates).each do |record|
             values = extract_values(record)
             if @fetch_unknown_columns
               unknown_values = extract_unknown_values(record)
