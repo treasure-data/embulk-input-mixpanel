@@ -9,6 +9,7 @@ module Embulk
       Plugin.register_input("mixpanel", self)
 
       GUESS_RECORDS_COUNT = 10
+      NOT_PROPERTY_COLUMN = "event".freeze
 
       # NOTE: It takes long time to fetch data between from_date to
       # to_date by one API request. So this plugin fetches data
@@ -31,6 +32,7 @@ module Embulk
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
+          fetch_unknown_columns: config.param(:fetch_unknown_columns, :bool, default: true),
         }
 
         columns = task[:schema].map do |column|
@@ -39,6 +41,9 @@ module Embulk
 
           Column.new(nil, name, type, column["format"])
         end
+
+        # for unknown columns
+        columns << Column.new(nil, "unknown_columns", :string)
 
         resume(task, columns, 1, &control)
       end
@@ -77,6 +82,7 @@ module Embulk
         @timezone = task[:timezone]
         @schema = task[:schema]
         @dates = task[:dates]
+        @fetch_unknown_columns = task[:fetch_unknown_columns]
       end
 
       def run
@@ -84,7 +90,12 @@ module Embulk
           Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
           fetch(dates).each do |record|
-            page_builder.add(extract_values(record))
+            values = extract_values(record)
+            if @fetch_unknown_columns
+              unknown_values = extract_unknown_values(record)
+              values << unknown_values.to_json
+            end
+            page_builder.add(values)
           end
 
           break if preview?
@@ -100,15 +111,34 @@ module Embulk
 
       def extract_values(record)
         @schema.map do |column|
-          case column["name"]
-          when "event"
-            record["event"]
-          when "time"
-            time = record["properties"]["time"]
-            adjust_timezone(time)
-          else
-            record["properties"][column["name"]]
-          end
+          extract_value(record, column["name"])
+        end
+      end
+
+      def extract_value(record, name)
+        case name
+        when NOT_PROPERTY_COLUMN
+          record[NOT_PROPERTY_COLUMN]
+        when "time"
+          time = record["properties"]["time"]
+          adjust_timezone(time)
+        else
+          record["properties"][name]
+        end
+      end
+
+      def extract_unknown_values(record)
+        record_keys = record["properties"].keys + [NOT_PROPERTY_COLUMN]
+        schema_keys = @schema.map {|column| column["name"]}
+        unknown_keys = record_keys - schema_keys
+
+        unless unknown_keys.empty?
+          Embulk.logger.warn("Unknown columns exists in record: #{unknown_keys.join(', ')}")
+        end
+
+        unknown_keys.inject({}) do |result, key|
+          result[key] = extract_value(record, key)
+          result
         end
       end
 
@@ -176,7 +206,7 @@ module Embulk
           result[:format] = col.format if col.format
           result
         end
-        columns.unshift(name: "event", type: :string)
+        columns.unshift(name: NOT_PROPERTY_COLUMN, type: :string)
       end
     end
 

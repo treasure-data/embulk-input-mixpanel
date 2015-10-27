@@ -38,6 +38,8 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
   - NOTE: Mixpanel API supports to export data from at least 2 days before to at most the previous day.
 - **fetch_days**: Count of days range for exporting (integer, optional, default: from_date - (today - 1))
   - NOTE: Mixpanel doesn't support to from_date > today - 2
+- **fetch_unknown_columns**: If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: true)
+  - NOTE: If true, `unknown_columns` column is created and added unknown columns' data.
 - **event**: The event or events to filter data (array, optional, default: nil)
 - **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
 - **bucket**:The data backet to filter data (string, optional, default: nil)
