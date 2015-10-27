@@ -333,9 +333,12 @@ module Embulk
         end
 
         def columns
-          schema.map do |col|
+          unknown_columns = [Column.new(nil, "unknown_columns", :string)]
+          configured_columns = schema.map do |col|
             Column.new(nil, col["name"], col["type"].to_sym)
           end
+
+          configured_columns + unknown_columns
         end
       end
 
@@ -410,6 +413,52 @@ module Embulk
           mock(@page_builder).finish
 
           @plugin.run
+        end
+
+        class UnknownColumnsTest < self
+          def setup
+            super
+            @page_builder = Object.new
+            @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+          end
+
+          def test_run
+            Embulk.logger.warn(anything)
+            stub(@plugin).preview? { false }
+
+            # NOTE: Expect records are contained same record
+            record = records.first
+            properties = record["properties"]
+
+            time = properties["time"]
+            tz = TZInfo::Timezone.get(TIMEZONE)
+            offset = tz.period_for_local(time, true).offset.utc_offset
+            adjusted_time = time - offset
+
+            added = [
+              properties["foo"],
+              adjusted_time,
+              {"int" => properties["int"], "event" => record["event"]}.to_json
+            ]
+
+            mock(@page_builder).add(added).times(records.length * 2)
+            mock(@page_builder).finish
+
+            @plugin.run
+          end
+
+          private
+
+          def task
+            super.merge(schema: schema)
+          end
+
+          def schema
+            [
+              {"name" => "foo", "type" => "long"},
+              {"name" => "time", "type" => "long"},
+            ]
+          end
         end
 
         private

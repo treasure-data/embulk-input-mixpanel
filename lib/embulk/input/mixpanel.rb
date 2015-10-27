@@ -40,6 +40,9 @@ module Embulk
           Column.new(nil, name, type, column["format"])
         end
 
+        # for unknown columns
+        columns << Column.new(nil, "unknown_columns", :string)
+
         resume(task, columns, 1, &control)
       end
 
@@ -83,8 +86,13 @@ module Embulk
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
-          fetch(dates).each do |record|
-            page_builder.add(extract_values(record))
+          fetch(dates).each.with_index do |record, i|
+            values = extract_values(record)
+            if true # TODO: switch by configuration parameter
+              unknown_values = extract_unknown_values(record)
+              values << unknown_values.to_json
+            end
+            page_builder.add(values)
           end
 
           break if preview?
@@ -100,15 +108,34 @@ module Embulk
 
       def extract_values(record)
         @schema.map do |column|
-          case column["name"]
-          when "event"
-            record["event"]
-          when "time"
-            time = record["properties"]["time"]
-            adjust_timezone(time)
-          else
-            record["properties"][column["name"]]
-          end
+          extract_value(record, column["name"])
+        end
+      end
+
+      def extract_value(record, name)
+        case name
+        when "event"
+          record["event"]
+        when "time"
+          time = record["properties"]["time"]
+          adjust_timezone(time)
+        else
+          record["properties"][name]
+        end
+      end
+
+      def extract_unknown_values(record)
+        record_keys = record["properties"].keys + ["event"]
+        schema_keys = @schema.map {|column| column["name"]}
+        unknown_keys = record_keys - schema_keys
+
+        unless unknown_keys.empty?
+          Embulk.logger.warn("Unknown columns exists in record: #{unknown_keys.join(', ')}")
+        end
+
+        unknown_keys.inject({}) do |result, key|
+          result[key] = extract_value(record, key)
+          result
         end
       end
 
