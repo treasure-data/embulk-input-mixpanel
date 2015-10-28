@@ -487,6 +487,8 @@ module Embulk
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
           fetch_unknown_columns: false
+          retry_initial_wait_sec: 2,
+          retry_limit: 3,
         }
       end
 
@@ -519,6 +521,8 @@ module Embulk
           from_date: FROM_DATE,
           fetch_days: DAYS,
           fetch_unknown_columns: false,
+          retry_initial_wait_sec: 2,
+          retry_limit: 3,
         }
       end
 
