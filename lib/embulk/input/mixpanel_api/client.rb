@@ -16,34 +16,35 @@ module Embulk
         end
 
         def export_with_retry(params = {}, retry_initial_wait_sec, retry_limit)
-          with_retry(retry_initial_wait_sec, retry_limit) do
-            export(params)
+          body = with_retry(retry_initial_wait_sec, retry_limit) do
+            request(params)
           end
+
+          response_to_enum(body)
         end
 
         def export(params = {})
-          # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
-          params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
-          params[:sig] = signature(params)
-
-          Embulk.logger.debug "Export param: #{params.to_s}"
-
           body = request(params)
-
-          Enumerator.new do |y|
-            body.lines.each do |json|
-              begin
-                y << JSON.parse(json)
-              rescue => e
-                raise Embulk::DataError.new(e.message)
-              end
-            end
-          end
+          response_to_enum(body)
         end
 
         private
 
+        def response_to_enum(response_body)
+          Enumerator.new do |y|
+            response_body.lines.each do |json|
+              # TODO: raise Embulk::DataError when invalid json given for Embulk 0.7+
+              y << JSON.parse(json)
+            end
+          end
+        end
+
         def request(params)
+          # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
+          params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
+          params[:sig] = signature(params)
+          Embulk.logger.debug "Export param: #{params.to_s}"
+
           response = httpclient.get(ENDPOINT_EXPORT, params)
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
@@ -60,7 +61,7 @@ module Embulk
           wait_sec = initial_wait
           begin
             yield
-          rescue Embulk::ConfigError, Embulk::DataError => e
+          rescue Embulk::ConfigError => e # TODO: rescue Embulk::DataError for Embulk 0.7+
             # Don't retry
             raise e
           rescue => e

@@ -371,7 +371,7 @@ module Embulk
         def setup_client
 
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).export(anything) { records }
+            stub(klass).request { records_raw_response }
           end
         end
 
@@ -501,6 +501,10 @@ module Embulk
             }
           },
         ] * 30
+      end
+
+      def records_raw_response
+        records.map(&:to_json).join("\n")
       end
 
       def record_epoch
