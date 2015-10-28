@@ -43,6 +43,8 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 - **event**: The event or events to filter data (array, optional, default: nil)
 - **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
 - **bucket**:The data backet to filter data (string, optional, default: nil)
+- **retry_initial_wait_sec** Wait seconds for exponential backoff initial value (integer, default: 1)
+- **retry_limit**: Try to retry this times (integer, default: 5)
 
 ## Example
 

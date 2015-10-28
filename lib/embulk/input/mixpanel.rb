@@ -33,6 +33,8 @@ module Embulk
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
           fetch_unknown_columns: config.param(:fetch_unknown_columns, :bool, default: true),
+          retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
+          retry_limit: config.param(:retry_limit, :integer, default: 5),
         }
 
         columns = task[:schema].map do |column|
@@ -150,7 +152,7 @@ module Embulk
           "to_date" => to_date,
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        client.export(params)
+        client.export_with_retry(params, task[:retry_initial_wait_sec], task[:retry_limit])
       end
 
       def adjust_timezone(epoch)

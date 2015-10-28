@@ -371,7 +371,7 @@ module Embulk
         def setup_client
 
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).export(anything) { records }
+            stub(klass).request { records_raw_response }
           end
         end
 
@@ -486,7 +486,9 @@ module Embulk
           schema: schema,
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
-          fetch_unknown_columns: false
+          fetch_unknown_columns: false,
+          retry_initial_wait_sec: 2,
+          retry_limit: 3,
         }
       end
 
@@ -503,6 +505,10 @@ module Embulk
         ] * 30
       end
 
+      def records_raw_response
+        records.map(&:to_json).join("\n")
+      end
+
       def record_epoch
         1234567890
       end
@@ -515,6 +521,8 @@ module Embulk
           from_date: FROM_DATE,
           fetch_days: DAYS,
           fetch_unknown_columns: false,
+          retry_initial_wait_sec: 2,
+          retry_limit: 3,
         }
       end
 
