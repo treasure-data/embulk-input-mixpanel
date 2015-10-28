@@ -66,11 +66,11 @@ module Embulk
             raise e
           rescue => e
             if retry_limit <= retry_count
-              Embulk.logger.error "'#{e}(#{e.class})' error occured and reached retry count (#{retry_limit} times)"
+              Embulk.logger.error "'#{e}(#{e.class})' error occured and reached retry limit (#{retry_limit} times)"
               raise e
             end
             retry_count += 1
-            Embulk.logger.warn "'#{e}(#{e.class})' error occured. sleep and retry (#{retry_count}/#{retry_limit})"
+            Embulk.logger.warn "Retrying after #{wait_sec} seconds [#{retry_count}/#{retry_limit}] '#{e}(#{e.class})' error occured"
             sleep wait_sec
             wait_sec *= 2
             retry
