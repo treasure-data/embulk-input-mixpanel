@@ -486,7 +486,7 @@ module Embulk
           schema: schema,
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
-          fetch_unknown_columns: false
+          fetch_unknown_columns: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }
