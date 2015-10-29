@@ -1,3 +1,10 @@
+## 0.3.3 - 2015-10-29
+
+* [enhancement] Exponential backoff retry [#31](https://github.com/treasure-data/embulk-input-mixpanel/pull/31)
+* [enhancement] Treat unguessed columns [#30](https://github.com/treasure-data/embulk-input-mixpanel/pull/30)
+* [enhancement] Loosely guess [#27](https://github.com/treasure-data/embulk-input-mixpanel/pull/27)
+* [maintenance] Refactor [#26](https://github.com/treasure-data/embulk-input-mixpanel/pull/26)
+
 ## 0.3.2 - 2015-10-06
 
 * [enhancement] Support embulk 0.7 [#25](https://github.com/treasure-data/embulk-input-mixpanel/pull/25)
