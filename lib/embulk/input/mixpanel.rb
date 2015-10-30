@@ -25,6 +25,8 @@ module Embulk
         range = RangeGenerator.new(from_date, fetch_days).generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
+        fetch_unknown_columns = config.param(:fetch_unknown_columns, :bool, default: true)
+
         task = {
           params: export_params(config),
           dates: range,
@@ -32,7 +34,7 @@ module Embulk
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
-          fetch_unknown_columns: config.param(:fetch_unknown_columns, :bool, default: true),
+          fetch_unknown_columns: fetch_unknown_columns,
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         }
@@ -44,8 +46,9 @@ module Embulk
           Column.new(nil, name, type, column["format"])
         end
 
-        # for unknown columns
-        columns << Column.new(nil, "unknown_columns", :string)
+        if fetch_unknown_columns
+          columns << Column.new(nil, "unknown_columns", :string)
+        end
 
         resume(task, columns, 1, &control)
       end
