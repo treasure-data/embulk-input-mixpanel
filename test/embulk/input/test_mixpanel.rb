@@ -333,12 +333,9 @@ module Embulk
         end
 
         def columns
-          unknown_columns = [Column.new(nil, "unknown_columns", :string)]
-          configured_columns = schema.map do |col|
+          schema.map do |col|
             Column.new(nil, col["name"], col["type"].to_sym)
           end
-
-          configured_columns + unknown_columns
         end
       end
 
