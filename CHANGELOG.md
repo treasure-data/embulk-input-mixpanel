@@ -1,3 +1,7 @@
+## 0.3.4 - 2015-11-02
+
+* [enhancement] Create `unknown_columns` only when option is true [#32](https://github.com/treasure-data/embulk-input-mixpanel/pull/32)
+
 ## 0.3.3 - 2015-10-29
 
 * [enhancement] Exponential backoff retry [#31](https://github.com/treasure-data/embulk-input-mixpanel/pull/31)
