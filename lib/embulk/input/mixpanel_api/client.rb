@@ -15,14 +15,6 @@ module Embulk
           @api_secret = api_secret
         end
 
-        def export_with_retry(params = {}, retry_initial_wait_sec, retry_limit)
-          body = with_retry(retry_initial_wait_sec, retry_limit) do
-            request(params)
-          end
-
-          response_to_enum(body)
-        end
-
         def export(params = {})
           body = request(params)
           response_to_enum(body)
@@ -54,27 +46,6 @@ module Embulk
             raise RuntimeError, response.body
           end
           response.body
-        end
-
-        def with_retry(initial_wait, retry_limit, &block)
-          retry_count = 0
-          wait_sec = initial_wait
-          begin
-            yield
-          rescue Embulk::ConfigError => e # TODO: rescue Embulk::DataError for Embulk 0.7+
-            # Don't retry
-            raise e
-          rescue => e
-            if retry_limit <= retry_count
-              Embulk.logger.error "'#{e}(#{e.class})' error occured and reached retry limit (#{retry_limit} times)"
-              raise e
-            end
-            retry_count += 1
-            Embulk.logger.warn "Retrying after #{wait_sec} seconds [#{retry_count}/#{retry_limit}] '#{e}(#{e.class})' error occured"
-            sleep wait_sec
-            wait_sec *= 2
-            retry
-          end
         end
 
         def signature(params)

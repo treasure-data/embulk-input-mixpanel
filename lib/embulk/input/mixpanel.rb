@@ -1,4 +1,5 @@
 require "tzinfo"
+require "perfect_retry"
 require "embulk/input/mixpanel_api/client"
 require "range_generator"
 require "timezone_validator"
@@ -88,6 +89,14 @@ module Embulk
         @schema = task[:schema]
         @dates = task[:dates]
         @fetch_unknown_columns = task[:fetch_unknown_columns]
+        @retryer = PerfectRetry.new do |config|
+          config.limit = task[:retry_limit]
+          config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
+          config.dont_rescues = [Embulk::ConfigError]
+          config.rescues = [RuntimeError]
+          config.log_level = nil
+          config.logger = Embulk.logger
+        end
       end
 
       def run
@@ -155,7 +164,9 @@ module Embulk
           "to_date" => to_date,
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        client.export_with_retry(params, task[:retry_initial_wait_sec], task[:retry_limit])
+        @retryer.with_retry do
+          client.export(params)
+        end
       end
 
       def adjust_timezone(epoch)
