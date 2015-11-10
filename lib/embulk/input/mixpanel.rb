@@ -91,7 +91,7 @@ module Embulk
         @fetch_unknown_columns = task[:fetch_unknown_columns]
         @retryer = PerfectRetry.new do |config|
           config.limit = task[:retry_limit]
-          config.sleep = proc{|n| task[:retry_initial_wait_sec] ** n}
+          config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
           config.dont_rescues = [Embulk::ConfigError]
           config.rescues = [RuntimeError]
           config.log_level = nil
