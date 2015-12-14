@@ -18,24 +18,21 @@ module Embulk
       SLICE_DAYS_COUNT = 7
 
       def self.transaction(config, &control)
-        timezone = config.param(:timezone, :string)
-        TimezoneValidator.new(timezone).validate
+        validate_config(config)
 
         from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
         fetch_days = config.param(:fetch_days, :integer, default: nil)
         range = RangeGenerator.new(from_date, fetch_days).generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
-        fetch_unknown_columns = config.param(:fetch_unknown_columns, :bool, default: true)
-
         task = {
           params: export_params(config),
           dates: range,
-          timezone: timezone,
+          timezone: config.param(:timezone, :string),
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
-          fetch_unknown_columns: fetch_unknown_columns,
+          fetch_unknown_columns: config.param(:fetch_unknown_columns, :bool, default: true),
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         }
@@ -47,7 +44,7 @@ module Embulk
           Column.new(nil, name, type, column["format"])
         end
 
-        if fetch_unknown_columns
+        if task[:fetch_unknown_columns]
           columns << Column.new(nil, "unknown_columns", :string)
         end
 
@@ -233,6 +230,11 @@ module Embulk
           result
         end
         columns.unshift(name: NOT_PROPERTY_COLUMN, type: :string)
+      end
+
+      def self.validate_config(config)
+        timezone = config.param(:timezone, :string)
+        TimezoneValidator.new(timezone).validate # NOTE: raise error if unknown timezone passed
       end
     end
 
