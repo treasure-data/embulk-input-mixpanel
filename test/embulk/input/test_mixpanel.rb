@@ -79,7 +79,7 @@ module Embulk
           }
 
           stub_export_all
-          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape RangeGenerator.default_guess_start_date.to_s}/)
 
           Mixpanel.guess(embulk_config(config))
         end
@@ -107,7 +107,7 @@ module Embulk
           }
 
           stub_export_all
-          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape RangeGenerator.default_guess_start_date.to_s}/)
 
           Mixpanel.guess(embulk_config(config))
         end

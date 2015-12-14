@@ -1,6 +1,28 @@
 class RangeGenerator
   attr_reader :from_date_str, :fetch_days
 
+  GUESS_FETCH_DAYS_DEFAULT = 7
+
+  def self.range_from_config_for_run(config)
+    from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
+    fetch_days = config.param(:fetch_days, :integer, default: nil)
+    new(from_date, fetch_days).generate_range
+  end
+
+  def self.range_from_config_for_guess(config)
+    from_date = config.param(:from_date, :string, default: default_guess_start_date.to_s)
+    fetch_days = config.param(:fetch_days, :integer, default: GUESS_FETCH_DAYS_DEFAULT)
+    range = new(from_date, fetch_days).generate_range
+    if range.empty?
+      return default_guess_start_date..(Date.today - 1)
+    end
+    range
+  end
+
+  def self.default_guess_start_date
+    Date.today - GUESS_FETCH_DAYS_DEFAULT - 1
+  end
+
   def initialize(from_date_str, fetch_days)
     @from_date_str = from_date_str
     @fetch_days = fetch_days
