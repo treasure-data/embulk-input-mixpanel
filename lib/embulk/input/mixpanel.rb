@@ -77,18 +77,11 @@ module Embulk
       end
 
       def init
-        @api_key = task[:api_key]
-        @api_secret = task[:api_secret]
-        @params = task[:params]
-        @timezone = task[:timezone]
-        @schema = task[:schema]
-        @dates = task[:dates]
-        @fetch_unknown_columns = task[:fetch_unknown_columns]
       end
 
       def run
         count = 0
-        @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
+        task[:dates].each_slice(SLICE_DAYS_COUNT) do |dates|
           Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
           fetch(dates).each do |record|
@@ -103,7 +96,7 @@ module Embulk
         page_builder.finish
 
         task_report = {
-          to_date: @dates.last || (Date.today - 1)
+          to_date: task[:dates].last || (Date.today - 1)
         }
         return task_report
       end
@@ -122,11 +115,11 @@ module Embulk
       end
 
       def extract_values(record)
-        values = @schema.map do |column|
+        values = task[:schema].map do |column|
           extract_value(record, column["name"])
         end
 
-        if @fetch_unknown_columns
+        if task[:fetch_unknown_columns]
           unknown_values = extract_unknown_values(record)
           values << unknown_values.to_json
         end
@@ -148,7 +141,7 @@ module Embulk
 
       def extract_unknown_values(record)
         record_keys = record["properties"].keys + [NOT_PROPERTY_COLUMN]
-        schema_keys = @schema.map {|column| column["name"]}
+        schema_keys = task[:schema].map {|column| column["name"]}
         unknown_keys = record_keys - schema_keys
 
         unless unknown_keys.empty?
@@ -164,11 +157,11 @@ module Embulk
       def fetch(dates)
         from_date = dates.first
         to_date = dates.last
-        params = @params.merge(
+        params = task[:params].merge(
           "from_date" => from_date,
           "to_date" => to_date,
         )
-        client = MixpanelApi::Client.new(@api_key, @api_secret)
+        client = MixpanelApi::Client.new(task[:api_key], task[:api_secret])
         retryer.with_retry do
           client.export(params)
         end
@@ -177,7 +170,7 @@ module Embulk
       def adjust_timezone(epoch)
         # Adjust timezone offset to get UTC time
         # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
-        tz = TZInfo::Timezone.get(@timezone)
+        tz = TZInfo::Timezone.get(task[:timezone])
         offset = tz.period_for_local(epoch, true).offset.utc_offset
         epoch - offset
       end
