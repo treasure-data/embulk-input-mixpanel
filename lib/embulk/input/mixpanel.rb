@@ -89,14 +89,6 @@ module Embulk
         @schema = task[:schema]
         @dates = task[:dates]
         @fetch_unknown_columns = task[:fetch_unknown_columns]
-        @retryer = PerfectRetry.new do |config|
-          config.limit = task[:retry_limit]
-          config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
-          config.dont_rescues = [Embulk::ConfigError]
-          config.rescues = [RuntimeError]
-          config.log_level = nil
-          config.logger = Embulk.logger
-        end
       end
 
       def run
@@ -122,6 +114,17 @@ module Embulk
       end
 
       private
+
+      def retryer
+        PerfectRetry.new do |config|
+          config.limit = task[:retry_limit]
+          config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
+          config.dont_rescues = [Embulk::ConfigError]
+          config.rescues = [RuntimeError]
+          config.log_level = nil
+          config.logger = Embulk.logger
+        end
+      end
 
       def extract_values(record)
         @schema.map do |column|
@@ -164,7 +167,7 @@ module Embulk
           "to_date" => to_date,
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
-        @retryer.with_retry do
+        retryer.with_retry do
           client.export(params)
         end
       end
