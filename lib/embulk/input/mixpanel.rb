@@ -107,7 +107,9 @@ module Embulk
 
         page_builder.finish
 
-        task_report = {to_date: @dates.last || (Date.today - 1)}
+        task_report = {
+          to_date: @dates.last || (Date.today - 1)
+        }
         return task_report
       end
 
