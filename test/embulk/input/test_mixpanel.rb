@@ -380,6 +380,8 @@ module Embulk
         test "200" do
           stub_response(200)
           mock(Embulk.logger).warn(/Retrying/).never
+          stub(Embulk.logger).debug
+
           mock(@page_builder).finish
           @plugin.run
         end
@@ -387,6 +389,8 @@ module Embulk
         test "400" do
           stub_response(400)
           mock(Embulk.logger).warn(/Retrying/).never
+          stub(Embulk.logger).debug
+
           assert_raise(Embulk::ConfigError) do
             @plugin.run
           end
@@ -395,6 +399,8 @@ module Embulk
         test "401" do
           stub_response(401)
           mock(Embulk.logger).warn(/Retrying/).never
+          stub(Embulk.logger).debug
+
           assert_raise(Embulk::ConfigError) do
             @plugin.run
           end
@@ -403,6 +409,8 @@ module Embulk
         test "500" do
           stub_response(500)
           mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
+          stub(Embulk.logger).debug
+
           assert_raise(PerfectRetry::TooManyRetry) do
             @plugin.run
           end
@@ -411,6 +419,7 @@ module Embulk
         test "timeout" do
           stub(@httpclient).get { raise HTTPClient::TimeoutError, "timeout" }
           mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
+          stub(Embulk.logger).debug
 
           assert_raise(PerfectRetry::TooManyRetry) do
             @plugin.run
