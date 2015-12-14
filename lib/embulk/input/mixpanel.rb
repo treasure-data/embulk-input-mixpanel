@@ -97,10 +97,6 @@ module Embulk
 
           fetch(dates).each do |record|
             values = extract_values(record)
-            if @fetch_unknown_columns
-              unknown_values = extract_unknown_values(record)
-              values << unknown_values.to_json
-            end
             page_builder.add(values)
           end
 
@@ -127,9 +123,16 @@ module Embulk
       end
 
       def extract_values(record)
-        @schema.map do |column|
+        values = @schema.map do |column|
           extract_value(record, column["name"])
         end
+
+        if @fetch_unknown_columns
+          unknown_values = extract_unknown_values(record)
+          values << unknown_values.to_json
+        end
+
+        values
       end
 
       def extract_value(record, name)
