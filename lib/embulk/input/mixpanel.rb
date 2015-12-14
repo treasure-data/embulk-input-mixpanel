@@ -92,15 +92,17 @@ module Embulk
       end
 
       def run
+        count = 0
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
 
           fetch(dates).each do |record|
             values = extract_values(record)
             page_builder.add(values)
+            count += values.length
           end
 
-          break if preview?
+          break if preview? && count > 30
         end
 
         page_builder.finish
