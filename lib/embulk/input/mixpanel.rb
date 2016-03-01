@@ -73,11 +73,11 @@ module Embulk
         Embulk.logger.info "Guessing schema using #{range.first}..#{range.last} records"
 
         params = export_params(config).merge(
-          from_date: range.first,
-          to_date: range.last,
+          "from_date" => range.first,
+          "to_date" => range.last,
         )
 
-        columns = guess_from_records(client.export(params))
+        columns = guess_from_records(client.export_for_small_dataset(params))
         return {"columns" => columns}
       end
 
@@ -101,7 +101,9 @@ module Embulk
 
       def run
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
-          Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
+          unless preview?
+            Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
+          end
 
           fetch(dates).each do |record|
             values = extract_values(record)
@@ -165,7 +167,11 @@ module Embulk
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
         @retryer.with_retry do
-          client.export(params)
+          if preview?
+            client.export_for_small_dataset(params)
+          else
+            client.export(params)
+          end
         end
       end
 

@@ -20,6 +20,18 @@ module Embulk
           response_to_enum(body)
         end
 
+        def export_for_small_dataset(params = {}, times = 0)
+          to_date = Date.parse(params["from_date"].to_s) + (1 * (10 ** times))
+          params["to_date"] = to_date.strftime("%Y-%m-%d")
+          body = request(params)
+          result = response_to_enum(body)
+          if result.to_a.length.zero?
+            export_for_small_dataset(params, times + 1)
+          else
+            result
+          end
+        end
+
         private
 
         def response_to_enum(response_body)
