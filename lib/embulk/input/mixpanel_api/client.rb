@@ -21,11 +21,16 @@ module Embulk
         end
 
         def export_for_small_dataset(params = {}, times = 0)
-          to_date = Date.parse(params["from_date"].to_s) + (1 * (10 ** times))
+          days = (1 * (10 ** times))
+          to_date = Date.parse(params["from_date"].to_s) + days
           params["to_date"] = to_date.strftime("%Y-%m-%d")
+
           body = request(params)
           result = response_to_enum(body)
           if result.to_a.length.zero?
+            if times >= 5
+              raise ConfigError.new "#{params["from_date"]} + #{days} days has no record. too old date?"
+            end
             export_for_small_dataset(params, times + 1)
           else
             result
