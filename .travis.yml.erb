@@ -10,18 +10,8 @@ notifications:
   slack:
     secure: "cAAHcb/HdJK6elr6gfxlotUJdZys8nA/BUb1rKVt7T7EShOjqNOwHo0vZBG5fXQEbUJjHCFAl8tH1N8wz+KLoVErlMmD2OgBKGgvgm3fddkIgGRRvxe8yB0yEFy5yuvfgqJDlwPHZxbwj2Ddb8uTaLd8yzmRzGWNwLyRQTDaQbaKBaB+emP2t/1AilQHyItN02NuW3qcEGr7Hzg+IsKabDRzhMi89RV0xk2eP5iWTYW76ULbbfP3NqBpcVLskAqVQd1YOFUSEb2fdzRj7UuLUUp3C0Kb5gKfXPHb97XuMqwyviakTr02omdaM82NvB8GKn7QKBbcwA1Iz1euinxQQ7MTzJe8wLMH8q205lTpl96CANKwIxrk/HestgEboq97xSp5Wc1Qn1ynnrLOvBYW7EG/e6exguojQmkLkV9P6LW9g4nYsR8UEjyuRd252xch4+b4M3lxtlAXtpWguPfm5ZKhICBsJMlYm6//q1cBlNUOzR0cufCHDTNdlB/YLynvdg1ykFISYARP+5sV2YM9rD/1Rs/396qYr0mNbCh83P9GlZ5NZtWLQePJroHe3iQ18X3YHEcb50OTfRmKNoXTldQBD9iKNkwlFpWfruVdBWT+JRM77+yIV9ORjY7UE4ZtH8HxAg4bX+ey+C5axgxQk569h3CdLmVapFt6wovCSVk="
 
-before_install:
-  - |
-    # Currently, Travis can't treat jruby 9.0.1.0
-    if [[ ${TRAVIS_RUBY_VERSION} = "jruby-9.0.0.0" ]];then
-      rvm get head
-      rvm use jruby-9.0.1.0 --install
-      ruby -v
-    fi
-
 rvm:
-  - jruby-19mode
-  - jruby-9.0.0.0
+  - jruby-9.0.5.0
 
 gemfile:
 <% versions.each do |file| -%>
@@ -37,9 +27,6 @@ matrix:
     <% end %>
 
   allow_failures:
-    - gemfile: gemfiles/embulk-0.6.22
-    - gemfile: gemfiles/embulk-0.7.0
-    - gemfile: gemfiles/embulk-0.7.1
     # Ignore failure for *-latest
     <% versions.find_all{|file| file.to_s.match(/-latest/)}.each do |file| -%>
 - gemfile: <%= file %>
