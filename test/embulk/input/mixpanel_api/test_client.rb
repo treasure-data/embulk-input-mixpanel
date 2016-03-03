@@ -89,6 +89,32 @@ module Embulk
             end
           end
 
+          class ExportSmallDataset < self
+            def test_to_date_after_1_day
+              to = (Date.parse(params["from_date"]) + 1).to_s
+              mock(@client).request(params.merge("to_date" => to)) { jsonl_dummy_responses }
+
+              @client.export_for_small_dataset(params)
+            end
+
+            def test_to_date_after_1_day_after_10_days_if_empty
+              to1 = (Date.parse(params["from_date"]) + 1).to_s
+              to2 = (Date.parse(params["from_date"]) + 10).to_s
+              mock(@client).request(params.merge("to_date" => to1)) { "" }
+              mock(@client).request(params.merge("to_date" => to2)) { jsonl_dummy_responses }
+
+              @client.export_for_small_dataset(params)
+            end
+
+            def test_config_error_when_too_long_empty_dates
+              stub(@client).request(anything) { "" }
+
+              assert_raise(Embulk::ConfigError) do
+                @client.export_for_small_dataset(params)
+              end
+            end
+          end
+
           private
 
           def stub_client
@@ -111,10 +137,10 @@ module Embulk
 
           def params
             {
-              api_key: API_KEY,
-              api_secret: API_SECRET,
-              from_date: "2015-01-01",
-              to_date: "2015-03-02",
+              "api_key" => API_KEY,
+              "api_secret" => API_SECRET,
+              "from_date" => "2015-01-01",
+              "to_date" => "2015-03-02",
             }
           end
 

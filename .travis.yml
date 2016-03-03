@@ -18,6 +18,7 @@ before_install:
       rvm use jruby-9.0.1.0 --install
       ruby -v
     fi
+  - gem i bundler
 
 rvm:
   - jruby-19mode
