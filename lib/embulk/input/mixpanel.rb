@@ -221,14 +221,16 @@ module Embulk
         sample_props = records.first(GUESS_RECORDS_COUNT).map{|r| r["properties"]}
         schema = Guess::SchemaGuess.from_hash_records(sample_props)
         columns = schema.map do |col|
+          next if col.name == "time"
           result = {
             name: col.name,
             type: col.type,
           }
           result[:format] = col.format if col.format
           result
-        end
+        end.compact
         columns.unshift(name: NOT_PROPERTY_COLUMN, type: :string)
+        columns.unshift(name: "time", type: :long)
       end
     end
 
