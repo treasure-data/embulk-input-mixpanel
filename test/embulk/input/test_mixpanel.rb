@@ -54,6 +54,7 @@ module Embulk
         def setup
           # Do nothing from parent
           mute_warn
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
         end
 
         def test_from_date_old_date
@@ -111,6 +112,19 @@ module Embulk
           mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
 
           Mixpanel.guess(embulk_config(config))
+        end
+
+        def test_mixpanel_is_down
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+          }
+
+          assert_raise(Embulk::DataError) do
+            Mixpanel.guess(embulk_config(config))
+          end
         end
 
         private
