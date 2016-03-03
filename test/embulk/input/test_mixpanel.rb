@@ -131,9 +131,9 @@ module Embulk
         def expected
           {
             "columns" => [
+              {name: "time", type: :long},
               {name: "event", type: :string},
               {name: "foo", type: :string},
-              {name: "time", type: :long},
               {name: "int", type: :long},
             ]
           }
