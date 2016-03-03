@@ -10,14 +10,25 @@ module Embulk
         ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
         PING_TIMEOUT_SECONDS = 3
+        PING_RETRY_LIMIT = 3
+        PING_RETRY_WAIT = 2
 
         def self.mixpanel_available?
+          retryer = PerfectRetry.new do |config|
+            config.limit = PING_RETRY_LIMIT
+            config.sleep = PING_RETRY_WAIT
+            config.logger = Embulk.logger
+            config.log_level = nil
+          end
+
           begin
-            client = HTTPClient.new
-            client.connect_timeout = PING_TIMEOUT_SECONDS
-            client.get("https://data.mixpanel.com")
+            retryer.with_retry do
+              client = HTTPClient.new
+              client.connect_timeout = PING_TIMEOUT_SECONDS
+              client.get("https://data.mixpanel.com")
+            end
             true
-          rescue HTTPClient::ConnectTimeoutError => e
+          rescue PerfectRetry::TooManyRetry
             false
           end
         end
