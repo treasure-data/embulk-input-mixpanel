@@ -125,7 +125,7 @@ module Embulk
 
         def stub_export_all
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).export(anything) { records }
+            stub(klass).export_for_small_dataset(anything) { records }
           end
         end
 
@@ -458,14 +458,6 @@ module Embulk
 
           @page_builder = Object.new
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
-        end
-
-        def test_preview_check
-          mock(@plugin).preview? { true }
-          stub(@page_builder).add(anything)
-          stub(@page_builder).finish
-
-          @plugin.run
         end
 
         def test_preview
