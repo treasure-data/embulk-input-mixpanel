@@ -24,6 +24,7 @@ module Embulk
       def setup
         setup_client
         setup_logger
+        stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
       end
 
       def setup_client
@@ -375,6 +376,7 @@ module Embulk
           stub(@page_builder).finish {}
           stub(Embulk.logger).warn {}
           stub(Embulk.logger).info {}
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
         end
 
         test "200" do
@@ -413,6 +415,14 @@ module Embulk
           mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
 
           assert_raise(PerfectRetry::TooManyRetry) do
+            @plugin.run
+          end
+        end
+
+        test "Mixpanel is down" do
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
+
+          assert_raise(Embulk::DataError) do
             @plugin.run
           end
         end

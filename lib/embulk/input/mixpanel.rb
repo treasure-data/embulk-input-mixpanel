@@ -166,6 +166,10 @@ module Embulk
           "to_date" => to_date,
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
+        unless MixpanelApi::Client.mixpanel_available?
+          raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")
+        end
+
         @retryer.with_retry do
           if preview?
             client.export_for_small_dataset(params)

@@ -9,6 +9,18 @@ module Embulk
       class Client
         ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
+        PING_TIMEOUT_SECONDS = 3
+
+        def self.mixpanel_available?
+          begin
+            client = HTTPClient.new
+            client.connect_timeout = PING_TIMEOUT_SECONDS
+            client.get("https://data.mixpanel.com")
+            true
+          rescue HTTPClient::ConnectTimeoutError => e
+            false
+          end
+        end
 
         def initialize(api_key, api_secret)
           @api_key = api_key
