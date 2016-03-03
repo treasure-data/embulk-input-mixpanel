@@ -67,6 +67,7 @@ module Embulk
 
         def signature(params)
           # https://mixpanel.com/docs/api-documentation/data-export-api#auth-implementation
+          params.delete(:sig)
           sorted_keys = params.keys.map(&:to_s).sort
           signature = sorted_keys.inject("") do |sig, key|
             value = params[key] || params[key.to_sym]
