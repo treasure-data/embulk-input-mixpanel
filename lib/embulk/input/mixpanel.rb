@@ -48,7 +48,7 @@ module Embulk
         end
 
         if fetch_unknown_columns
-          columns << Column.new(nil, "unknown_columns", :string)
+          columns << Column.new(nil, "unknown_columns", :json)
         end
 
         resume(task, columns, 1, &control)

@@ -114,6 +114,15 @@ module Embulk
           Mixpanel.guess(embulk_config(config))
         end
 
+        def test_json_type
+          sample_records = records.map do |r|
+            r.merge("properties" => {"array" => [1,2], "hash" => {foo: "FOO"}})
+          end
+          actual = Mixpanel.guess_from_records(sample_records)
+          assert actual.include?(name: "array", type: :json)
+          assert actual.include?(name: "hash", type: :json)
+        end
+
         def test_mixpanel_is_down
           stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
           config = {
