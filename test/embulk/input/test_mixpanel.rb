@@ -24,6 +24,7 @@ module Embulk
       def setup
         setup_client
         setup_logger
+        stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
       end
 
       def setup_client
@@ -53,6 +54,7 @@ module Embulk
         def setup
           # Do nothing from parent
           mute_warn
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
         end
 
         def test_from_date_old_date
@@ -121,6 +123,19 @@ module Embulk
           assert actual.include?(name: "hash", type: :json)
         end
 
+        def test_mixpanel_is_down
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
+          config = {
+            type: "mixpanel",
+            api_key: API_KEY,
+            api_secret: API_SECRET,
+          }
+
+          assert_raise(Embulk::DataError) do
+            Mixpanel.guess(embulk_config(config))
+          end
+        end
+
         private
 
         def stub_export_all
@@ -140,9 +155,9 @@ module Embulk
         def expected
           {
             "columns" => [
+              {name: "time", type: :long},
               {name: "event", type: :string},
               {name: "foo", type: :string},
-              {name: "time", type: :long},
               {name: "int", type: :long},
             ]
           }
@@ -384,6 +399,7 @@ module Embulk
           stub(@page_builder).finish {}
           stub(Embulk.logger).warn {}
           stub(Embulk.logger).info {}
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
         end
 
         test "200" do
@@ -422,6 +438,14 @@ module Embulk
           mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
 
           assert_raise(PerfectRetry::TooManyRetry) do
+            @plugin.run
+          end
+        end
+
+        test "Mixpanel is down" do
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
+
+          assert_raise(Embulk::DataError) do
             @plugin.run
           end
         end
