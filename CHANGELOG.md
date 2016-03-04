@@ -1,3 +1,14 @@
+## 0.4.0 - 2016-03-04
+
+This version contains compatibility breaking. Only support Embulk 0.8 or later since this version, no longer support Embulk 0.7.x or earlier.
+
+* [enhancement] Support json type [#35](https://github.com/treasure-data/embulk-input-mixpanel/pull/35)
+* [enhancement] Check Mixpanel availability before run [#37](https://github.com/treasure-data/embulk-input-mixpanel/pull/37)
+* [enhancement] Guessing time column as statically [#36](https://github.com/treasure-data/embulk-input-mixpanel/pull/36)
+* [enhancement] Reduce guess and preview records [#34](https://github.com/treasure-data/embulk-input-mixpanel/pull/34)
+* [maintenance] Use perfect_retry [#33](https://github.com/treasure-data/embulk-input-mixpanel/pull/33)
+
+
 ## 0.3.4 - 2015-11-02
 
 * [enhancement] Create `unknown_columns` only when option is true [#32](https://github.com/treasure-data/embulk-input-mixpanel/pull/32)
