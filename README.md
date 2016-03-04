@@ -8,7 +8,7 @@ embulk-input-mixpanel is the Embulk input plugin for [Mixpanel](https://mixpanel
 
 ## Overview
 
-Required Embulk version >= 0.6.16.
+Required Embulk version >= 0.8.6 (since v0.4.0).
 
 * **Plugin type**: input
 * **Resume supported**: no
