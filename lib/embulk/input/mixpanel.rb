@@ -67,6 +67,8 @@ module Embulk
       end
 
       def self.guess(config)
+        giveup_when_mixpanel_is_down
+
         client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
 
         range = guess_range(config)
@@ -100,6 +102,8 @@ module Embulk
       end
 
       def run
+        self.class.giveup_when_mixpanel_is_down
+
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
           unless preview?
             Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
@@ -124,6 +128,12 @@ module Embulk
       end
 
       private
+
+      def self.giveup_when_mixpanel_is_down
+        unless MixpanelApi::Client.mixpanel_available?
+          raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")
+        end
+      end
 
       def extract_values(record)
         @schema.map do |column|
@@ -166,6 +176,7 @@ module Embulk
           "to_date" => to_date,
         )
         client = MixpanelApi::Client.new(@api_key, @api_secret)
+
         @retryer.with_retry do
           if preview?
             client.export_for_small_dataset(params)
