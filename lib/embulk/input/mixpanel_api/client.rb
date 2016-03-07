@@ -12,6 +12,7 @@ module Embulk
         PING_TIMEOUT_SECONDS = 3
         PING_RETRY_LIMIT = 3
         PING_RETRY_WAIT = 2
+        SMALLSET_BYTE_RANGE = "0-#{5 * 1024 * 1024}"
 
         def self.mixpanel_available?
           retryer = PerfectRetry.new do |config|
@@ -48,9 +49,9 @@ module Embulk
           to_date = Date.parse(params["from_date"].to_s) + days
           params["to_date"] = to_date.strftime("%Y-%m-%d")
 
-          body = request(params)
+          body = request(params, SMALLSET_BYTE_RANGE)
           result = response_to_enum(body)
-          if result.to_a.length.zero?
+          if result.first.nil?
             if times >= 5
               raise ConfigError.new "#{params["from_date"]} + #{days} days has no record. too old date?"
             end
@@ -71,13 +72,20 @@ module Embulk
           end
         end
 
-        def request(params)
+        def request(params, range = nil)
           # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
           params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
           params[:sig] = signature(params)
           Embulk.logger.debug "Export param: #{params.to_s}"
 
-          response = httpclient.get(ENDPOINT_EXPORT, params)
+          headers = {}
+          response =
+            if range
+              # guess/preview
+              httpclient.get(ENDPOINT_EXPORT, params, {"Range" => "bytes=#{range}"})
+            else
+              httpclient.get(ENDPOINT_EXPORT, params)
+            end
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
           when 400..499
