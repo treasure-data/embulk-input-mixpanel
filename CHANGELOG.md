@@ -1,3 +1,6 @@
+## 0.4.2 - 2016-03-08
+* [fixed] Fix Range request was not satisfied [#39](https://github.com/treasure-data/embulk-input-mixpanel/pull/39)
+
 ## 0.4.1 - 2016-03-08
 * [enhancement] Reduce data bytes with range [#38](https://github.com/treasure-data/embulk-input-mixpanel/pull/38)
 
