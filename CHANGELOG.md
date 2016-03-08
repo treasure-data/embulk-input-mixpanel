@@ -1,3 +1,6 @@
+## 0.4.1 - 2016-03-08
+* [enhancement] Reduce data bytes with range [#38](https://github.com/treasure-data/embulk-input-mixpanel/pull/38)
+
 ## 0.4.0 - 2016-03-04
 
 This version contains compatibility breaking. Only support Embulk 0.8 or later since this version, no longer support Embulk 0.7.x or earlier.
