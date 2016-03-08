@@ -82,7 +82,13 @@ module Embulk
           response =
             if range
               # guess/preview
-              httpclient.get(ENDPOINT_EXPORT, params, {"Range" => "bytes=#{range}"})
+              res = httpclient.get(ENDPOINT_EXPORT, params, {"Range" => "bytes=#{range}"})
+              if res.code == 416
+                # cannot satisfied requested Range, get full body
+                httpclient.get(ENDPOINT_EXPORT, params)
+              else
+                res
+              end
             else
               httpclient.get(ENDPOINT_EXPORT, params)
             end
