@@ -335,6 +335,44 @@ module Embulk
           end
         end
 
+        class TestCustomProps < self
+          setup do
+            stub(Mixpanel).resume {}
+          end
+
+          data(
+            "false/false" => [false, false],
+            "false/true" => [false, true],
+            "true/false" => [true, false],
+          )
+          def test_valid_combination(data)
+            fetch_unknown_columns, custom_properties_json = data
+            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: fetch_unknown_columns, custom_properties_json: custom_properties_json).to_a.flatten(1)]
+
+            assert_nothing_raised do
+              Mixpanel.transaction(conf, &control)
+            end
+          end
+
+          def test_both_true_then_raise_config_error
+            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: true, custom_properties_json: true).to_a.flatten(1)]
+
+            assert_raise(Embulk::ConfigError) do
+              Mixpanel.transaction(conf, &control)
+            end
+          end
+
+          private
+
+          def transaction_config
+            config.merge(
+              columns: schema,
+              fetch_days: 2,
+              timezone: "UTC",
+            )
+          end
+        end
+
         def test_resume
           today = Date.today
           control = proc { [{to_date: today.to_s}] }
@@ -463,6 +501,7 @@ module Embulk
             dates: DATES.to_a.map(&:to_s),
             params: Mixpanel.export_params(embulk_config),
             fetch_unknown_columns: false,
+            custom_properties_json: false,
             retry_initial_wait_sec: 0,
             retry_limit: 3,
           }
@@ -581,6 +620,7 @@ module Embulk
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
           fetch_unknown_columns: false,
+          custom_properties_json: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }
@@ -615,6 +655,7 @@ module Embulk
           from_date: FROM_DATE,
           fetch_days: DAYS,
           fetch_unknown_columns: false,
+          custom_properties_json: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }

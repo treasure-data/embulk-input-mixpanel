@@ -38,13 +38,56 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
   - NOTE: Mixpanel API supports to export data from at least 2 days before to at most the previous day.
 - **fetch_days**: Count of days range for exporting (integer, optional, default: from_date - (today - 1))
   - NOTE: Mixpanel doesn't support to from_date > today - 2
-- **fetch_unknown_columns**: If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: true)
+- **fetch_unknown_columns**(deprecated): If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: true)
   - NOTE: If true, `unknown_columns` column is created and added unknown columns' data.
+- **custom_properties_json**: All custom properties into `custom_properties` key. "custom properties" are not desribed Mixpanel document [1](https://mixpanel.com/help/questions/articles/special-or-reserved-properties), [2](https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default).  (boolean, optional, default: false)
+  - NOTE: Cannot set both `fetch_unknown_columns` and `custom_properties_json` to `true`.
 - **event**: The event or events to filter data (array, optional, default: nil)
 - **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
 - **bucket**:The data backet to filter data (string, optional, default: nil)
 - **retry_initial_wait_sec** Wait seconds for exponential backoff initial value (integer, default: 1)
 - **retry_limit**: Try to retry this times (integer, default: 5)
+
+### `fetch_unknown_columns` and `custom_properties_json`
+
+If you have such data and set config.yml as below.
+
+| event | $city   | $custom | $foobar |
+| ----- | ------- | ------- | ------- |
+| ev    | Tokyo   | custom  | foobar  |
+
+(NOTE: `$city` is a [reserved key](https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default), `$custom` and `$foobar` are not)
+
+```yaml
+in:
+  type: mixpanel
+  api_key: "API_KEY"
+  api_secret: "API_SECRET"
+  timezone: "US/Pacific"
+  from_date: "2015-07-19"
+  fetch_days: 5
+  columns:
+    - {name: event, type: string}
+    - {name: $custom, type: string}
+```
+
+
+`fetch_unknown_columns: true` will fetch as:
+
+| event | $custom | unknown_columns (json) |
+| ----- | ------- | ----------------- |
+| ev    | custom  | `{"$city":"Tokyo", "$foobar": "foobar"}` |
+
+`custom_properties_json: true` will fetch as:
+
+| event | $custom | custom_properties (json) |
+| ----- | ------- | ----------------- |
+| ev    | custom  | `{"$foobar": "foobar"}` |
+
+
+`fetch_unknown_columns` recognize `$city` and `$foobar` as `unknown_columns` because they are not described in config.yml.
+
+`custom_properties_json` recognize `$foobar` as `custom_properties`. `$custom` is also custom property but it was described in config.yml.
 
 ## Example
 
