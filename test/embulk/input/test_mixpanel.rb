@@ -548,6 +548,56 @@ module Embulk
           @plugin.run
         end
 
+        class CustomPropertiesTest < self
+          def setup
+            super
+            @page_builder = Object.new
+            @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+            stub(@plugin).fetch { [record] }
+          end
+
+          def test_run
+            stub(@plugin).preview? { false }
+
+            custom_property_keys = %w($foobar)
+
+            added = [
+              record["event"],
+              record["properties"]["$specified"],
+              custom_property_keys.map{|k| {k => record["properties"][k] }}.inject(&:merge)
+            ]
+
+            mock(@page_builder).add(added).at_least(1)
+            mock(@page_builder).finish
+
+            @plugin.run
+          end
+
+          private
+
+          def task
+            super.merge(schema: schema, fetch_unknown_columns: false, custom_properties_json: true)
+          end
+
+          def record
+            {
+              "event" => "EV",
+              "properties" => {
+                "$os" => "Android",
+                "$specified" => "foo",
+                "$foobar" => "foobar",
+              }
+            }
+          end
+
+          def schema
+            [
+              {"name" => "event", "type" => "string"},
+              {"name" => "$specified", "type" => "string"},
+            ]
+          end
+        end
+
         class UnknownColumnsTest < self
           def setup
             super
