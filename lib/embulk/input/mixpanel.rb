@@ -48,13 +48,13 @@ module Embulk
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
           fetch_unknown_columns: fetch_unknown_columns,
-          custom_properties_json: config.param(:custom_properties_json, :bool, default: false),
+          fetch_custom_properties: config.param(:fetch_custom_properties, :bool, default: false),
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         }
 
-        if task[:fetch_unknown_columns] && task[:custom_properties_json]
-          raise Embulk::ConfigError.new("Don't set true both `fetch_unknown_columns` and `custom_properties_json`.")
+        if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
+          raise Embulk::ConfigError.new("Don't set true both `fetch_unknown_columns` and `fetch_custom_properties`.")
         end
 
         columns = task[:schema].map do |column|
@@ -65,11 +65,11 @@ module Embulk
         end
 
         if fetch_unknown_columns
-          Embulk.logger.warn "Deprecated `unknown_columns`. Use `custom_properties_json` instead."
+          Embulk.logger.warn "Deprecated `unknown_columns`. Use `fetch_custom_properties` instead."
           columns << Column.new(nil, "unknown_columns", :json)
         end
 
-        if task[:custom_properties_json]
+        if task[:fetch_custom_properties]
           columns << Column.new(nil, "custom_properties", :json)
         end
 
@@ -137,7 +137,7 @@ module Embulk
               unknown_values = extract_unknown_values(record)
               values << unknown_values.to_json
             end
-            if task[:custom_properties_json]
+            if task[:fetch_custom_properties]
               values << collect_custom_properties(record)
             end
             page_builder.add(values)

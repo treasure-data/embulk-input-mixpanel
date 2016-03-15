@@ -346,8 +346,8 @@ module Embulk
             "true/false" => [true, false],
           )
           def test_valid_combination(data)
-            fetch_unknown_columns, custom_properties_json = data
-            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: fetch_unknown_columns, custom_properties_json: custom_properties_json).to_a.flatten(1)]
+            fetch_unknown_columns, fetch_custom_properties = data
+            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: fetch_unknown_columns, fetch_custom_properties: fetch_custom_properties).to_a.flatten(1)]
 
             assert_nothing_raised do
               Mixpanel.transaction(conf, &control)
@@ -355,7 +355,7 @@ module Embulk
           end
 
           def test_both_true_then_raise_config_error
-            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: true, custom_properties_json: true).to_a.flatten(1)]
+            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: true, fetch_custom_properties: true).to_a.flatten(1)]
 
             assert_raise(Embulk::ConfigError) do
               Mixpanel.transaction(conf, &control)
@@ -501,7 +501,7 @@ module Embulk
             dates: DATES.to_a.map(&:to_s),
             params: Mixpanel.export_params(embulk_config),
             fetch_unknown_columns: false,
-            custom_properties_json: false,
+            fetch_custom_properties: false,
             retry_initial_wait_sec: 0,
             retry_limit: 3,
           }
@@ -576,7 +576,7 @@ module Embulk
           private
 
           def task
-            super.merge(schema: schema, fetch_unknown_columns: false, custom_properties_json: true)
+            super.merge(schema: schema, fetch_unknown_columns: false, fetch_custom_properties: true)
           end
 
           def record
@@ -670,7 +670,7 @@ module Embulk
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
           fetch_unknown_columns: false,
-          custom_properties_json: false,
+          fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }
@@ -705,7 +705,7 @@ module Embulk
           from_date: FROM_DATE,
           fetch_days: DAYS,
           fetch_unknown_columns: false,
-          custom_properties_json: false,
+          fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }

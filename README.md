@@ -40,15 +40,15 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
   - NOTE: Mixpanel doesn't support to from_date > today - 2
 - **fetch_unknown_columns**(deprecated): If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: true)
   - NOTE: If true, `unknown_columns` column is created and added unknown columns' data.
-- **custom_properties_json**: All custom properties into `custom_properties` key. "custom properties" are not desribed Mixpanel document [1](https://mixpanel.com/help/questions/articles/special-or-reserved-properties), [2](https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default).  (boolean, optional, default: false)
-  - NOTE: Cannot set both `fetch_unknown_columns` and `custom_properties_json` to `true`.
+- **fetch_custom_properties**: All custom properties into `custom_properties` key. "custom properties" are not desribed Mixpanel document [1](https://mixpanel.com/help/questions/articles/special-or-reserved-properties), [2](https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default).  (boolean, optional, default: false)
+  - NOTE: Cannot set both `fetch_unknown_columns` and `fetch_custom_properties` to `true`.
 - **event**: The event or events to filter data (array, optional, default: nil)
 - **where**: Expression to filter data (c.f. https://mixpanel.com/docs/api-documentation/data-export-api#segmentation-expressions) (string, optional, default: nil)
 - **bucket**:The data backet to filter data (string, optional, default: nil)
 - **retry_initial_wait_sec** Wait seconds for exponential backoff initial value (integer, default: 1)
 - **retry_limit**: Try to retry this times (integer, default: 5)
 
-### `fetch_unknown_columns` and `custom_properties_json`
+### `fetch_unknown_columns` and `fetch_custom_properties`
 
 If you have such data and set config.yml as below.
 
@@ -78,7 +78,7 @@ in:
 | ----- | ------- | ----------------- |
 | ev    | custom  | `{"$city":"Tokyo", "$foobar": "foobar"}` |
 
-`custom_properties_json: true` will fetch as:
+`fetch_custom_properties: true` will fetch as:
 
 | event | $custom | custom_properties (json) |
 | ----- | ------- | ----------------- |
@@ -87,7 +87,7 @@ in:
 
 `fetch_unknown_columns` recognize `$city` and `$foobar` as `unknown_columns` because they are not described in config.yml.
 
-`custom_properties_json` recognize `$foobar` as `custom_properties`. `$custom` is also custom property but it was described in config.yml.
+`fetch_custom_properties` recognize `$foobar` as `custom_properties`. `$custom` is also custom property but it was described in config.yml.
 
 ## Example
 
