@@ -12,6 +12,18 @@ module Embulk
       GUESS_RECORDS_COUNT = 10
       NOT_PROPERTY_COLUMN = "event".freeze
 
+      # https://mixpanel.com/help/questions/articles/special-or-reserved-properties
+      # https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default
+      #
+      # JavaScript to extract key names from HTML: run it on Chrome Devtool when opening their document
+      # > Array.from(document.querySelectorAll("strong")).map(function(s){ return s.textContent.match(/[A-Z]/) ? s.parentNode.textContent.match(/\((.*?)\)/)[1] : s.textContent.split(",").join(" ") }).join(" ")
+      # > Array.from(document.querySelectorAll("li")).map(function(s){ m = s.textContent.match(/\((.*?)\)/); return m && m[1] }).filter(function(k) { return k && !k.match("utm") }).join(" ")
+      KNOWN_KEYS = %W(
+        #{NOT_PROPERTY_COLUMN}
+        distinct_id ip mp_name_tag mp_note token time mp_country_code length campaign_id $email $phone $distinct_id $ios_devices $android_devices $first_name  $last_name  $name $city $region $country_code $timezone $unsubscribed
+        $city $region mp_country_code $browser $browser_version $device $current_url $initial_referrer $initial_referring_domain $os $referrer $referring_domain $screen_height $screen_width $search_engine $city $region $mp_country_code $timezone $browser_version $browser $initial_referrer $initial_referring_domain $os $last_seen $city $region mp_country_code $app_release $app_version $carrier $ios_ifa $os_version $manufacturer $lib_version $model $os $screen_height $screen_width $wifi $city $region $mp_country_code $timezone $ios_app_release $ios_app_version $ios_device_model $ios_lib_version $ios_version $ios_ifa $last_seen $city $region mp_country_code $app_version $bluetooth_enabled $bluetooth_version $brand $carrier $has_nfc $has_telephone $lib_version $manufacturer $model $os $os_version $screen_dpi $screen_height $screen_width $wifi $google_play_services $city $region mp_country_code $timezone $android_app_version $android_app_version_code $android_lib_version $android_os $android_os_version $android_brand $android_model $android_manufacturer $last_seen
+      ).uniq.freeze
+
       # NOTE: It takes long time to fetch data between from_date to
       # to_date by one API request. So this plugin fetches data
       # between each 7 (SLICE_DAYS_COUNT) days.
@@ -36,9 +48,14 @@ module Embulk
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
           fetch_unknown_columns: fetch_unknown_columns,
+          fetch_custom_properties: config.param(:fetch_custom_properties, :bool, default: false),
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         }
+
+        if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
+          raise Embulk::ConfigError.new("Don't set true both `fetch_unknown_columns` and `fetch_custom_properties`.")
+        end
 
         columns = task[:schema].map do |column|
           name = column["name"]
@@ -48,7 +65,12 @@ module Embulk
         end
 
         if fetch_unknown_columns
+          Embulk.logger.warn "Deprecated `unknown_columns`. Use `fetch_custom_properties` instead."
           columns << Column.new(nil, "unknown_columns", :json)
+        end
+
+        if task[:fetch_custom_properties]
+          columns << Column.new(nil, "custom_properties", :json)
         end
 
         resume(task, columns, 1, &control)
@@ -115,6 +137,9 @@ module Embulk
               unknown_values = extract_unknown_values(record)
               values << unknown_values.to_json
             end
+            if task[:fetch_custom_properties]
+              values << collect_custom_properties(record)
+            end
             page_builder.add(values)
           end
 
@@ -150,6 +175,16 @@ module Embulk
           adjust_timezone(time)
         else
           record["properties"][name]
+        end
+      end
+
+      def collect_custom_properties(record)
+        specified_columns = @schema.map{|col| col["name"]}
+        custom_keys = record["properties"].keys.find_all{|key| !KNOWN_KEYS.include?(key.to_s) && !specified_columns.include?(key.to_s) }
+        custom_keys.inject({}) do |result, key|
+          result.merge({
+            key => record["properties"][key]
+          })
         end
       end
 

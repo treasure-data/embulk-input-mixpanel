@@ -335,6 +335,44 @@ module Embulk
           end
         end
 
+        class TestCustomProps < self
+          setup do
+            stub(Mixpanel).resume {}
+          end
+
+          data(
+            "false/false" => [false, false],
+            "false/true" => [false, true],
+            "true/false" => [true, false],
+          )
+          def test_valid_combination(data)
+            fetch_unknown_columns, fetch_custom_properties = data
+            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: fetch_unknown_columns, fetch_custom_properties: fetch_custom_properties).to_a.flatten(1)]
+
+            assert_nothing_raised do
+              Mixpanel.transaction(conf, &control)
+            end
+          end
+
+          def test_both_true_then_raise_config_error
+            conf = DataSource[*transaction_config.merge(fetch_unknown_columns: true, fetch_custom_properties: true).to_a.flatten(1)]
+
+            assert_raise(Embulk::ConfigError) do
+              Mixpanel.transaction(conf, &control)
+            end
+          end
+
+          private
+
+          def transaction_config
+            config.merge(
+              columns: schema,
+              fetch_days: 2,
+              timezone: "UTC",
+            )
+          end
+        end
+
         def test_resume
           today = Date.today
           control = proc { [{to_date: today.to_s}] }
@@ -463,6 +501,7 @@ module Embulk
             dates: DATES.to_a.map(&:to_s),
             params: Mixpanel.export_params(embulk_config),
             fetch_unknown_columns: false,
+            fetch_custom_properties: false,
             retry_initial_wait_sec: 0,
             retry_limit: 3,
           }
@@ -507,6 +546,56 @@ module Embulk
           mock(@page_builder).finish
 
           @plugin.run
+        end
+
+        class CustomPropertiesTest < self
+          def setup
+            super
+            @page_builder = Object.new
+            @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+            stub(@plugin).fetch { [record] }
+          end
+
+          def test_run
+            stub(@plugin).preview? { false }
+
+            custom_property_keys = %w($foobar)
+
+            added = [
+              record["event"],
+              record["properties"]["$specified"],
+              custom_property_keys.map{|k| {k => record["properties"][k] }}.inject(&:merge)
+            ]
+
+            mock(@page_builder).add(added).at_least(1)
+            mock(@page_builder).finish
+
+            @plugin.run
+          end
+
+          private
+
+          def task
+            super.merge(schema: schema, fetch_unknown_columns: false, fetch_custom_properties: true)
+          end
+
+          def record
+            {
+              "event" => "EV",
+              "properties" => {
+                "$os" => "Android",
+                "$specified" => "foo",
+                "$foobar" => "foobar",
+              }
+            }
+          end
+
+          def schema
+            [
+              {"name" => "event", "type" => "string"},
+              {"name" => "$specified", "type" => "string"},
+            ]
+          end
         end
 
         class UnknownColumnsTest < self
@@ -581,6 +670,7 @@ module Embulk
           dates: DATES.to_a.map(&:to_s),
           params: Mixpanel.export_params(embulk_config),
           fetch_unknown_columns: false,
+          fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }
@@ -615,6 +705,7 @@ module Embulk
           from_date: FROM_DATE,
           fetch_days: DAYS,
           fetch_unknown_columns: false,
+          fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
         }
