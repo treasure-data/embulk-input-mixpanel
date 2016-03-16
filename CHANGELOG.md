@@ -1,3 +1,6 @@
+## 0.4.3 - 2016-03-16
+* [enhancement] Custom properties json [#40](https://github.com/treasure-data/embulk-input-mixpanel/pull/40)
+
 ## 0.4.2 - 2016-03-08
 * [fixed] Fix Range request was not satisfied [#39](https://github.com/treasure-data/embulk-input-mixpanel/pull/39)
 
