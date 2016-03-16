@@ -13,14 +13,12 @@ $LOAD_PATH.unshift(test_dir)
 
 ENV["TEST_UNIT_MAX_DIFF_TARGET_STRING_SIZE"] ||= "5000"
 
-if ENV["COVERAGE"]
-  if ENV["CI"]
-    require "codeclimate-test-reporter"
-    CodeClimate::TestReporter.start
-  else
-    require 'simplecov'
-    SimpleCov.start 'test_frameworks'
-  end
+if ENV["CI"]
+  require "codeclimate-test-reporter"
+  CodeClimate::TestReporter.start
+elsif ENV["COVERAGE"]
+  require 'simplecov'
+  SimpleCov.start 'test_frameworks'
 end
 
 exit Test::Unit::AutoRunner.run(true, test_dir)
