@@ -7,12 +7,28 @@ module Embulk
   module Input
     module MixpanelApi
       class Client
+        class TooManyExportRequestError < StandardError
+          attr_reader :response, :params
+
+          def initialize(response, params)
+            super("#{response.body}")
+            @response = response
+            @params = params
+          end
+
+          def to_s
+            # NOTE: Define `to_s` rather than `message` for Embulk error handling.
+            "[#{response.code}] #{response.body} with #{params["from_date"]}..#{params["to_date"]}"
+          end
+        end
+
         ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
         PING_TIMEOUT_SECONDS = 3
         PING_RETRY_LIMIT = 3
         PING_RETRY_WAIT = 2
-        SMALLSET_BYTE_RANGE = "0-#{5 * 1024 * 1024}"
+        SMALLSET_BYTE_MAX = 5 * 1024 * 1024
+        SMALLSET_BYTE_RANGE = "0-#{SMALLSET_BYTE_MAX}"
 
         def self.mixpanel_available?
           retryer = PerfectRetry.new do |config|
@@ -40,7 +56,13 @@ module Embulk
         end
 
         def export(params = {})
-          body = request(params)
+          body =
+            begin
+              request(params.dup)
+            rescue TooManyExportRequestError => e
+              Embulk.logger.warn "#{e.message}. Retrying"
+              request_for_each_day(params)
+            end
           response_to_enum(body)
         end
 
@@ -49,7 +71,14 @@ module Embulk
           to_date = Date.parse(params["from_date"].to_s) + days
           params["to_date"] = to_date.strftime("%Y-%m-%d")
 
-          body = request(params, SMALLSET_BYTE_RANGE)
+          body =
+            begin
+              request(params.dup, SMALLSET_BYTE_RANGE)
+            rescue TooManyExportRequestError => e
+              Embulk.logger.warn "#{e.message}. Retrying"
+              request_for_each_day(params, SMALLSET_BYTE_MAX)
+            end
+
           result = response_to_enum(body)
           if result.first.nil?
             if times >= 5
@@ -66,6 +95,7 @@ module Embulk
         def response_to_enum(response_body)
           Enumerator.new do |y|
             response_body.lines.each do |json|
+              next if json.strip.empty?
               # TODO: raise Embulk::DataError when invalid json given for Embulk 0.7+
               y << JSON.parse(json)
             end
@@ -93,13 +123,39 @@ module Embulk
               httpclient.get(ENDPOINT_EXPORT, params)
             end
           Embulk.logger.debug "response code: #{response.code}"
+
+          if response.body.include?("too many export requests in progress for this project")
+            raise TooManyExportRequestError.new(response, params)
+          end
           case response.code
           when 400..499
             raise ConfigError.new response.body
           when 500..599
             raise RuntimeError, response.body
           end
+
           response.body
+        end
+
+        def request_for_each_day(params, range = nil)
+          # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
+          params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
+          params[:sig] = signature(params)
+
+          from = Date.parse(params["from_date"])
+          to = Date.parse(params["to_date"])
+          diff = (to.jd - from.jd)
+
+          jsonl_body = ""
+          (diff + 1).times.each do |day|
+            target_date = from + day
+            reduced_params = params.merge("from_date" => target_date.to_s, "to_date" => target_date.to_s)
+            jsonl_body << request(reduced_params, range) << "\n"
+            if range && range < jsonl_body.bytesize
+              break
+            end
+          end
+          jsonl_body
         end
 
         def signature(params)

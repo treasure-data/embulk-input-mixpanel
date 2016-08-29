@@ -136,6 +136,32 @@ module Embulk
           end
         end
 
+        def test_too_many_requests
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
+
+          httpclient = HTTPClient.new
+          httpclient.test_loopback_http_response << [
+            "HTTP/1.1 422",
+            "Content-Type: application/json",
+            "",
+            {error: "too many export requests in progress for this project"}.to_json
+          ].join("\r\n")
+
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).httpclient { httpclient }
+            mock(klass).request_for_each_day(anything, MixpanelApi::Client::SMALLSET_BYTE_MAX) do
+              records.map(&:to_json).join("\n")
+            end
+          end
+
+          stub(Embulk.logger).info
+          mock(Embulk.logger).warn(/Retry/)
+
+          assert_nothing_raised do
+            Mixpanel.guess(embulk_config(config))
+          end
+        end
+
         private
 
         def stub_export_all
@@ -542,7 +568,7 @@ module Embulk
         def test_timezone
           stub(@plugin).preview? { false }
           adjusted = record_epoch - timezone_offset_seconds
-          mock(@page_builder).add(["FOO", adjusted]).times(records.length * 2)
+          mock(@page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
           mock(@page_builder).finish
 
           @plugin.run

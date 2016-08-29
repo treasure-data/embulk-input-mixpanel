@@ -101,7 +101,8 @@ module Embulk
           "to_date" => range.last,
         )
 
-        columns = guess_from_records(client.export_for_small_dataset(params))
+        res = client.export_for_small_dataset(params)
+        columns = guess_from_records(res)
         return {"columns" => columns}
       end
 
