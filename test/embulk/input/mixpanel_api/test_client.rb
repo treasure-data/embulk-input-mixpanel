@@ -55,11 +55,18 @@ module Embulk
 
           def test_http_request
             stub_client
-            mock(@httpclient).get(Client::ENDPOINT_EXPORT, params) do
+            stub(@client).signature { "SIGNATURE" }
+
+            query = params
+            query[:expire] = 1234567890
+            expected_params = query.dup
+            expected_params[:sig] = "SIGNATURE"
+
+            mock(@httpclient).get(Client::ENDPOINT_EXPORT, expected_params) do
               success_response
             end
 
-            @client.export(params)
+            @client.export(query)
           end
 
           def test_success
@@ -89,6 +96,60 @@ module Embulk
             end
           end
 
+          def test_failure_with_422_too_many_requests_fallback
+            stub_client
+            @httpclient.test_loopback_http_response << [
+              "HTTP/1.1 422",
+              "Content-Type: application/json",
+              "",
+              {error: "too many export requests in progress for this project"}.to_json
+            ].join("\r\n")
+            mock(@client).request_for_each_day(params) do
+              ""
+            end
+
+            @client.export(params)
+          end
+
+          def test_request_for_each_day_fallback
+            stub_client
+            params = {
+              "api_key" => API_KEY,
+              "api_secret" => API_SECRET,
+              "from_date" => "2015-01-01",
+              "to_date" => "2015-01-02",
+            }
+
+            expected = [
+              {"foo" => 1},
+              {"foo" => 2},
+            ]
+
+            @httpclient.test_loopback_http_response << [
+              "HTTP/1.1 422",
+              "Content-Type: application/json",
+              "",
+              {error: "too many export requests in progress for this project"}.to_json
+            ].join("\r\n")
+
+            @httpclient.test_loopback_http_response << [
+              "HTTP/1.1 200",
+              "Content-Type: application/json",
+              "",
+              expected[0].to_json
+            ].join("\r\n")
+
+            @httpclient.test_loopback_http_response << [
+              "HTTP/1.1 200",
+              "Content-Type: application/json",
+              "",
+              expected[1].to_json
+            ].join("\r\n")
+
+            actual = @client.export(params)
+            assert_equal expected, actual.to_a
+          end
+
           class ExportSmallDataset < self
             def test_to_date_after_1_day
               to = (Date.parse(params["from_date"]) + 1).to_s
@@ -113,6 +174,45 @@ module Embulk
                 @client.export_for_small_dataset(params)
               end
             end
+
+            def test_request_for_each_day_fallback
+              stub_client
+              params = {
+                "api_key" => API_KEY,
+                "api_secret" => API_SECRET,
+                "from_date" => "2015-01-01",
+                "to_date" => "2015-01-02",
+              }
+
+              records = [
+                {"foo" => "a" * Client::SMALLSET_BYTE_MAX},
+                {"foo" => 2}, # won't fetch due to SMALLSET_BYTE_MAX limit
+              ]
+
+              @httpclient.test_loopback_http_response << [
+                "HTTP/1.1 422",
+                "Content-Type: application/json",
+                "",
+                {error: "too many export requests in progress for this project"}.to_json
+              ].join("\r\n")
+
+              @httpclient.test_loopback_http_response << [
+                "HTTP/1.1 200",
+                "Content-Type: application/json",
+                "",
+                records[0].to_json
+              ].join("\r\n")
+
+              @httpclient.test_loopback_http_response << [
+                "HTTP/1.1 200",
+                "Content-Type: application/json",
+                "",
+                records[1].to_json
+              ].join("\r\n")
+
+              actual = @client.export_for_small_dataset(params)
+              assert_equal [records[0]], actual.to_a
+            end
           end
 
           private
@@ -122,7 +222,7 @@ module Embulk
           end
 
           def stub_response(response)
-            stub(@httpclient).get(Client::ENDPOINT_EXPORT, params) do
+            stub(@httpclient).get(Client::ENDPOINT_EXPORT, anything) do
               response
             end
           end
