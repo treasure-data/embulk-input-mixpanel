@@ -37,38 +37,17 @@ module Embulk
             @httpclient = HTTPClient.new
           end
 
-          def test_httpclient
-            stub_response(success_response)
-            mock(@client).httpclient { @httpclient }
-
-            @client.export(params)
-          end
-
-          def test_response_class
-            stub_client
-            stub_response(success_response)
-
-            actual = @client.export(params)
-
-            assert_equal(Enumerator, actual.class)
-          end
-
-          def test_http_request
-            stub_client
-            mock(@httpclient).get(Client::ENDPOINT_EXPORT, params) do
-              success_response
-            end
-
-            @client.export(params)
-          end
-
           def test_success
             stub_client
+            stub(@client).set_signatures(anything) {}
             stub_response(success_response)
 
-            actual = @client.export(params)
+            records = []
+            @client.export(params) do |record|
+              records << record
+            end
 
-            assert_equal(dummy_responses, actual.to_a)
+            assert_equal(dummy_responses, records)
           end
 
           def test_failure_with_400
@@ -92,16 +71,17 @@ module Embulk
           class ExportSmallDataset < self
             def test_to_date_after_1_day
               to = (Date.parse(params["from_date"]) + 1).to_s
-              mock(@client).request(params.merge("to_date" => to), Client::SMALLSET_BYTE_RANGE) { jsonl_dummy_responses }
+              mock(@client).request_small_dataset(params.merge("to_date" => to), Client::SMALLSET_BYTE_RANGE) { [:foo] }
 
               @client.export_for_small_dataset(params)
             end
 
             def test_to_date_after_1_day_after_10_days_if_empty
+              stub_client
               to1 = (Date.parse(params["from_date"]) + 1).to_s
               to2 = (Date.parse(params["from_date"]) + 10).to_s
-              mock(@client).request(params.merge("to_date" => to1), Client::SMALLSET_BYTE_RANGE) { "" }
-              mock(@client).request(params.merge("to_date" => to2), Client::SMALLSET_BYTE_RANGE) { jsonl_dummy_responses }
+              mock(@client).request_small_dataset(params.merge("to_date" => to1), Client::SMALLSET_BYTE_RANGE) { [] }
+              mock(@client).request_small_dataset(params.merge("to_date" => to2), Client::SMALLSET_BYTE_RANGE) { [:foo] }
 
               @client.export_for_small_dataset(params)
             end
@@ -122,9 +102,12 @@ module Embulk
           end
 
           def stub_response(response)
-            stub(@httpclient).get(Client::ENDPOINT_EXPORT, params) do
-              response
-            end
+            @httpclient.test_loopback_http_response << [
+              "HTTP/1.1 #{response.code}",
+              "Content-Type: application/json",
+              "",
+              response.body
+            ].join("\r\n")
           end
 
           def success_response
