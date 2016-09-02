@@ -71,7 +71,7 @@ module Embulk
             return records
           end
 
-          raise ConfigError.new "#{params["from_date"]} + #{days} days has no record. too old date?"
+          raise ConfigError.new "#{params["from_date"]}..#{try_to_dates.last} has no record. too old date?"
         end
 
         private
