@@ -203,20 +203,22 @@ module Embulk
         end
       end
 
-      def fetch(dates)
+      def fetch(dates, &block)
         from_date = dates.first
         to_date = dates.last
         params = @params.merge(
           "from_date" => from_date,
           "to_date" => to_date,
         )
-        client = MixpanelApi::Client.new(@api_key, @api_secret)
+        client = MixpanelApi::Client.new(@api_key, @api_secret, @retryer)
 
-        @retryer.with_retry do
-          if preview?
-            client.export_for_small_dataset(params)
-          else
-            client.export(params)
+        if preview?
+          client.export_for_small_dataset(params)
+        else
+          Enumerator.new do |y|
+            client.export(params) do |record|
+              y << record
+            end
           end
         end
       end

@@ -510,17 +510,17 @@ module Embulk
 
       class RunTest < self
         def setup_client
-
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).request { records_raw_response }
+            stub(klass).request_small_dataset { records_raw_response }
+            stub(klass).request { records }
           end
         end
 
         def setup
           super
-
           @page_builder = Object.new
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+          stub(@plugin).fetch { records }
         end
 
         def test_preview
@@ -542,7 +542,7 @@ module Embulk
         def test_timezone
           stub(@plugin).preview? { false }
           adjusted = record_epoch - timezone_offset_seconds
-          mock(@page_builder).add(["FOO", adjusted]).times(records.length * 2)
+          mock(@page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
           mock(@page_builder).finish
 
           @plugin.run
@@ -600,13 +600,14 @@ module Embulk
 
         class UnknownColumnsTest < self
           def setup
-            super
             @page_builder = Object.new
             @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+            stub(@plugin).fetch { records }
           end
 
           def test_run
-            Embulk.logger.warn(anything)
+            stub(Embulk.logger).warn
+            stub(Embulk.logger).info
             stub(@plugin).preview? { false }
 
             # NOTE: Expect records are contained same record
