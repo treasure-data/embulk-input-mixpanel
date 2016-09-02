@@ -1,3 +1,6 @@
+## 0.4.4 - 2016-09-02
+* [enhancement] Reduce memory usage by streaming processing [#42](https://github.com/treasure-data/embulk-input-mixpanel/pull/42)
+
 ## 0.4.3 - 2016-03-16
 * [enhancement] Custom properties json [#40](https://github.com/treasure-data/embulk-input-mixpanel/pull/40)
 
