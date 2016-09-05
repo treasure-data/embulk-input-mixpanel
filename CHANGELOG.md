@@ -1,3 +1,6 @@
+## 0.4.5 - 2016-09-05
+* [fixed] Don't try to guess future date [#43](https://github.com/treasure-data/embulk-input-mixpanel/pull/43)
+
 ## 0.4.4 - 2016-09-02
 * [enhancement] Reduce memory usage by streaming processing [#42](https://github.com/treasure-data/embulk-input-mixpanel/pull/42)
 
