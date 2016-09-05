@@ -56,13 +56,11 @@ module Embulk
         end
 
         def export_for_small_dataset(params = {})
-          try_to_dates = 5.times.map do |n|
-            # from_date + 1, from_date + 10, from_date + 100, ... so on
-            days = 1 * (10 ** n)
-            Date.parse(params["from_date"].to_s) + days
-          end
-
-          try_to_dates.each do |to_date|
+          yesterday = Date.today - 1
+          latest_tried_to_date = nil
+          try_to_dates(params["from_date"]).each do |to_date|
+            next if yesterday < to_date
+            latest_tried_to_date = to_date
             params["to_date"] = to_date.strftime("%Y-%m-%d")
             records = retryer.with_retry do
               request_small_dataset(params, SMALLSET_BYTE_RANGE)
@@ -71,7 +69,18 @@ module Embulk
             return records
           end
 
-          raise ConfigError.new "#{params["from_date"]}..#{try_to_dates.last} has no record. too old date?"
+          raise ConfigError.new "#{params["from_date"]}..#{latest_tried_to_date} has no record."
+        end
+
+        def try_to_dates(from_date)
+          try_to_dates = 5.times.map do |n|
+            # from_date + 1, from_date + 10, from_date + 100, ... so on
+            days = 1 * (10 ** n)
+            Date.parse(from_date.to_s) + days
+          end
+          yesterday = Date.today - 1
+          try_to_dates << yesterday
+          try_to_dates.find_all {|date| date <= yesterday}.uniq
         end
 
         private
