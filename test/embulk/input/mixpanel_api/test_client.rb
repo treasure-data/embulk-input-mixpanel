@@ -30,6 +30,36 @@ module Embulk
           assert_equal(expected, @client.__send__(:signature, params))
         end
 
+        class TryToDatesTest < self
+          def setup
+            @client = Client.new(API_KEY, API_SECRET)
+          end
+
+          data do
+            [
+              ["2000-01-01", "2000-01-01"],
+              ["2010-01-01", "2010-01-01"],
+              ["3 days ago", (Date.today - 3).to_s],
+            ]
+          end
+          def test_candidates(from_str)
+            from = Date.parse(from_str)
+            yesterday = Date.today - 1
+            dates = @client.try_to_dates(from.to_s)
+            expect = [
+              from + 1,
+              from + 10,
+              from + 100,
+              from + 1000,
+              from + 10000,
+              yesterday,
+            ].find_all{|d| d <= yesterday}
+
+            assert_equal expect, dates
+            assert dates.all?{|d| d <= yesterday}
+          end
+        end
+
         class ExportTest < self
           def setup
             super
