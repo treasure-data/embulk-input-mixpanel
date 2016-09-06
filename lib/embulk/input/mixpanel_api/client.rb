@@ -131,6 +131,10 @@ module Embulk
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
           when 400..499
+            if response.code == 429
+              # [429] {"error": "too many export requests in progress for this project"}
+              raise RuntimeError.new("[#{response.code}] #{response.body} (will retry)")
+            end
             raise ConfigError.new("[#{response.code}] #{response.body}")
           when 500..599
             raise RuntimeError.new("[#{response.code}] #{response.body}")

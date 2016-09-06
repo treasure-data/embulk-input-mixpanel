@@ -98,12 +98,30 @@ module Embulk
             end
           end
 
+          def test_retry_for_429_temporary_fail
+            stub_client
+            stub_response(failure_response(429))
+
+            assert_raise(RuntimeError) do
+              @client.export(params)
+            end
+          end
+
           class ExportSmallDataset < self
             def test_to_date_after_1_day
               to = (Date.parse(params["from_date"]) + 1).to_s
               mock(@client).request_small_dataset(params.merge("to_date" => to), Client::SMALLSET_BYTE_RANGE) { [:foo] }
 
               @client.export_for_small_dataset(params)
+            end
+
+            def test_retry_for_429_temporary_fail
+              stub_client
+              stub_response(failure_response(429))
+
+              assert_raise(RuntimeError) do
+                @client.export_for_small_dataset(params)
+              end
             end
 
             def test_to_date_after_1_day_after_10_days_if_empty
