@@ -91,7 +91,12 @@ module Embulk
       def self.guess(config)
         giveup_when_mixpanel_is_down
 
-        client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string))
+        retryer = perfect_retry({
+          retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
+          retry_limit: config.param(:retry_limit, :integer, default: 5),
+        })
+
+        client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string), retryer)
 
         range = guess_range(config)
         Embulk.logger.info "Guessing schema using #{range.first}..#{range.last} records"
@@ -105,6 +110,17 @@ module Embulk
         return {"columns" => columns}
       end
 
+      def self.perfect_retry(task)
+        PerfectRetry.new do |config|
+          config.limit = task[:retry_limit]
+          config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
+          config.dont_rescues = [Embulk::ConfigError]
+          config.rescues = [RuntimeError]
+          config.log_level = nil
+          config.logger = Embulk.logger
+        end
+      end
+
       def init
         @api_key = task[:api_key]
         @api_secret = task[:api_secret]
@@ -113,14 +129,6 @@ module Embulk
         @schema = task[:schema]
         @dates = task[:dates]
         @fetch_unknown_columns = task[:fetch_unknown_columns]
-        @retryer = PerfectRetry.new do |config|
-          config.limit = task[:retry_limit]
-          config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
-          config.dont_rescues = [Embulk::ConfigError]
-          config.rescues = [RuntimeError]
-          config.log_level = nil
-          config.logger = Embulk.logger
-        end
       end
 
       def run
@@ -210,7 +218,7 @@ module Embulk
           "from_date" => from_date,
           "to_date" => to_date,
         )
-        client = MixpanelApi::Client.new(@api_key, @api_secret, @retryer)
+        client = MixpanelApi::Client.new(@api_key, @api_secret, self.class.perfect_retry(task))
 
         if preview?
           client.export_for_small_dataset(params)
