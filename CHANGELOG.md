@@ -1,3 +1,6 @@
+## 0.4.6 - 2016-09-07
+* [enhancement] Retry with too frequency requests error [#44](https://github.com/treasure-data/embulk-input-mixpanel/pull/44)
+
 ## 0.4.5 - 2016-09-05
 * [fixed] Don't try to guess future date [#43](https://github.com/treasure-data/embulk-input-mixpanel/pull/43)
 
