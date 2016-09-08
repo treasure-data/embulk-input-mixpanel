@@ -1,3 +1,6 @@
+## 0.4.7 - 2016-09-08
+* [fixed] Retry was only enabled on preview and run. [#45](https://github.com/treasure-data/embulk-input-mixpanel/pull/45)
+
 ## 0.4.6 - 2016-09-07
 * [enhancement] Retry with too frequency requests error [#44](https://github.com/treasure-data/embulk-input-mixpanel/pull/44)
 
