@@ -1,3 +1,8 @@
+## 0.5.0 - 2016-11-18
+This version contains compatibility breaking for the default config, but you can use old config `fetch_unknown_columns` in this version.
+
+* [enhancement] Change default value to fetch_unknown_columns: false [#46](https://github.com/treasure-data/embulk-input-mixpanel/pull/46)
+
 ## 0.4.7 - 2016-09-08
 * [fixed] Retry was only enabled on preview and run. [#45](https://github.com/treasure-data/embulk-input-mixpanel/pull/45)
 
