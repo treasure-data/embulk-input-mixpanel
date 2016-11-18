@@ -38,7 +38,7 @@ module Embulk
         range = RangeGenerator.new(from_date, fetch_days).generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
 
-        fetch_unknown_columns = config.param(:fetch_unknown_columns, :bool, default: true)
+        fetch_unknown_columns = config.param(:fetch_unknown_columns, :bool, default: false)
 
         task = {
           params: export_params(config),
@@ -48,7 +48,7 @@ module Embulk
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
           fetch_unknown_columns: fetch_unknown_columns,
-          fetch_custom_properties: config.param(:fetch_custom_properties, :bool, default: false),
+          fetch_custom_properties: config.param(:fetch_custom_properties, :bool, default: true),
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         }
