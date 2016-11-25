@@ -9,7 +9,7 @@ class RangeGenerator
   def generate_range
     validate
     show_warnings
-    range_only_past.map{|date| date.to_s}
+    range_only_present.map{|date| date.to_s}
   end
 
   private
@@ -49,12 +49,12 @@ class RangeGenerator
     if fetch_days
       from_date..(from_date + fetch_days - 1)
     else
-      from_date..yesterday
+      from_date..today
     end
   end
 
-  def range_only_past
-    range.find_all{|date| date < today}
+  def range_only_present
+    range.find_all{|date| date <= today}
   end
 
   def overdays?
@@ -62,15 +62,11 @@ class RangeGenerator
   end
 
   def overdays
-    range.to_a - range_only_past.to_a
+    range.to_a - range_only_present.to_a
   end
 
   def from_date_too_early?
-    from_date > yesterday
-  end
-
-  def yesterday
-    today - 1
+    from_date > today
   end
 
   def today

@@ -82,7 +82,7 @@ module Embulk
         # NOTE: If this plugin supports to run by multi threads, this
         # implementation is terrible.
         task_report = task_reports.first
-        next_to_date = Date.parse(task_report[:to_date]).next
+        next_to_date = Date.parse(task_report[:to_date])
 
         next_config_diff = {from_date: next_to_date.to_s}
         return next_config_diff
@@ -156,7 +156,7 @@ module Embulk
 
         page_builder.finish
 
-        task_report = {to_date: @dates.last || (Date.today - 1)}
+        task_report = {to_date: @dates.last || Date.today}
         return task_report
       end
 
