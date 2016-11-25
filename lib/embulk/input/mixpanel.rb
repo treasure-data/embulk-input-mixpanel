@@ -51,6 +51,7 @@ module Embulk
           fetch_custom_properties: config.param(:fetch_custom_properties, :bool, default: true),
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
+          latest_fetched_time: config.param(:latest_fetched_time, :integer, default: 0),
         }
 
         if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
@@ -84,7 +85,10 @@ module Embulk
         task_report = task_reports.first
         next_to_date = Date.parse(task_report[:to_date])
 
-        next_config_diff = {from_date: next_to_date.to_s}
+        next_config_diff = {
+          from_date: next_to_date.to_s,
+          latest_fetched_time: task_report[:latest_fetched_time],
+        }
         return next_config_diff
       end
 
@@ -133,13 +137,28 @@ module Embulk
 
       def run
         self.class.giveup_when_mixpanel_is_down
+        prev_latest_fetched_time = task[:latest_fetched_time] || 0
+        prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
+        current_latest_fetched_time = prev_latest_fetched_time
 
         @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
+          ignored_record_count = 0
           unless preview?
             Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
           end
 
           fetch(dates).each do |record|
+            record_time = record["properties"]["time"]
+            if record_time <= prev_latest_fetched_time
+              ignored_record_count += 1
+              next
+            end
+
+            current_latest_fetched_time= [
+              current_latest_fetched_time,
+              record_time,
+            ].max
+
             values = extract_values(record)
             if @fetch_unknown_columns
               unknown_values = extract_unknown_values(record)
@@ -151,12 +170,18 @@ module Embulk
             page_builder.add(values)
           end
 
+          if ignored_record_count > 0
+            Embulk.logger.warn "Skipped already loaded #{ignored_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."
+          end
           break if preview?
         end
 
         page_builder.finish
 
-        task_report = {to_date: @dates.last || Date.today}
+        task_report = {
+          latest_fetched_time: current_latest_fetched_time,
+          to_date: @dates.last || Date.today - 1,
+        }
         return task_report
       end
 
