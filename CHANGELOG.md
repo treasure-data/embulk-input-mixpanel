@@ -1,3 +1,6 @@
+## 0.5.1 - 2016-12-13
+* Enable TCP Keepalive to protect from NAT [#48](https://github.com/treasure-data/embulk-input-mixpanel/pull/48)
+
 ## 0.5.0 - 2016-11-18
 This version contains compatibility breaking for the default config, but you can use old config `fetch_unknown_columns` in this version.
 
