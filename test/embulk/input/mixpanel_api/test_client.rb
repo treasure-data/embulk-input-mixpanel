@@ -30,6 +30,13 @@ module Embulk
           assert_equal(expected, @client.__send__(:signature, params))
         end
 
+        class TestKeepAlive < self
+          def test_tcp_keepalive_enabled
+            client = Client.new(API_KEY, API_SECRET)
+            assert client.send(:httpclient).tcp_keepalive
+          end
+        end
+
         class TryToDatesTest < self
           def setup
             @client = Client.new(API_KEY, API_SECRET)

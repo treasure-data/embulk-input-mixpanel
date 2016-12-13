@@ -165,6 +165,7 @@ module Embulk
             begin
               client = HTTPClient.new
               client.receive_timeout = TIMEOUT_SECONDS
+              client.tcp_keepalive = true
               client.default_header = {Accept: "application/json; charset=UTF-8"}
               # client.debug_dev = STDERR
               client
