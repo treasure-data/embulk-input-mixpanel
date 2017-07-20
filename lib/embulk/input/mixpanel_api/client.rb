@@ -100,8 +100,9 @@ module Embulk
           set_signatures(params)
 
           buf = ""
-          response = httpclient.get(ENDPOINT_EXPORT, params) do |chunk|
-            chunk.each_line do |line|
+          response = httpclient.get(ENDPOINT_EXPORT, params)
+          if response.status/100 == 2
+            response.body.each_line do |line|
               begin
                 record = JSON.parse(buf + line)
                 block.call record
@@ -110,8 +111,9 @@ module Embulk
                 buf << line
               end
             end
+          else
+            handle_error(response)
           end
-          handle_error(response)
         end
 
         def request_small_dataset(params, range)
