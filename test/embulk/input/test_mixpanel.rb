@@ -72,12 +72,12 @@ module Embulk
           assert_equal(expected, actual)
         end
 
-        def test_from_date_today
+        def test_from_date_future
           config = {
             type: "mixpanel",
             api_key: API_KEY,
             api_secret: API_SECRET,
-            from_date: Date.today.to_s,
+            from_date: (Date.today + 1).to_s,
           }
 
           stub_export_all
@@ -245,7 +245,7 @@ module Embulk
           end
 
           def target_dates
-            dates.find_all{|d| d < Date.today}.map {|date| date.to_s}
+            dates.find_all{|d| d <= Date.today}.map {|date| date.to_s}
           end
 
           def transaction_config
@@ -375,9 +375,9 @@ module Embulk
 
         def test_resume
           today = Date.today
-          control = proc { [{to_date: today.to_s}] }
+          control = proc { [{to_date: today.to_s, latest_fetched_time: 999}] }
           actual = Mixpanel.resume(transaction_task, columns, 1, &control)
-          assert_equal({from_date: today.next.to_s}, actual)
+          assert_equal({from_date: today.to_s, latest_fetched_time: 999}, actual)
         end
 
         def control
@@ -504,6 +504,7 @@ module Embulk
             fetch_custom_properties: false,
             retry_initial_wait_sec: 0,
             retry_limit: 3,
+            latest_fetched_time: 0,
           }
         end
       end
@@ -564,6 +565,7 @@ module Embulk
             added = [
               record["event"],
               record["properties"]["$specified"],
+              record["properties"]["time"] - 32400, # timezone adjust
               custom_property_keys.map{|k| {k => record["properties"][k] }}.inject(&:merge)
             ]
 
@@ -583,6 +585,7 @@ module Embulk
             {
               "event" => "EV",
               "properties" => {
+                "time" => 1000000,
                 "$os" => "Android",
                 "$specified" => "foo",
                 "$foobar" => "foobar",
@@ -594,6 +597,7 @@ module Embulk
             [
               {"name" => "event", "type" => "string"},
               {"name" => "$specified", "type" => "string"},
+              {"name" => "time", "type" => "integer"},
             ]
           end
         end
@@ -674,6 +678,7 @@ module Embulk
           fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
+          latest_fetched_time: 0,
         }
       end
 
@@ -709,6 +714,7 @@ module Embulk
           fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
+          latest_fetched_time: 0,
         }
       end
 

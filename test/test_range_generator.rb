@@ -37,8 +37,8 @@ class RangeGeneratorTest < Test::Unit::TestCase
         @warn_message_regexp = /ignored them/
       end
 
-      def test_range_only_past
-        expected_to = Date.today - 1
+      def test_range_only_present
+        expected_to = Date.today
         expected = (@from..expected_to).to_a.map{|date| date.to_s}
 
         stub(Embulk.logger).warn(@warn_message_regexp)
