@@ -100,20 +100,24 @@ module Embulk
           set_signatures(params)
 
           buf = ""
-          response = httpclient.get(ENDPOINT_EXPORT, params)
-          if response.status/100 == 2
-            response.body.each_line do |line|
-              begin
-                record = JSON.parse(buf + line)
-                block.call record
-                buf = ""
-              rescue JSON::ParserError => e
-                buf << line
+          error_response = ''
+          response = httpclient.get(ENDPOINT_EXPORT, params) do |response, chunk|
+            # Only process data if response status is 200..299
+            if response.status/100 == 2
+              chunk.each_line do |line|
+                begin
+                  record = JSON.parse(buf + line)
+                  block.call record
+                  buf = ""
+                rescue JSON::ParserError => e
+                  buf << line
+                end
               end
+            else
+               error_response << chunk
             end
-          else
-            handle_error(response)
           end
+          handle_error(response, error_response)
         end
 
         def request_small_dataset(params, range)
@@ -125,21 +129,21 @@ module Embulk
             # cannot satisfied requested Range, get full body
             res = httpclient.get(ENDPOINT_EXPORT, params)
           end
-          handle_error(res)
+          handle_error(res,res.body)
           response_to_enum(res.body)
         end
 
-        def handle_error(response)
+        def handle_error(response, error_response)
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
           when 400..499
             if response.code == 429
               # [429] {"error": "too many export requests in progress for this project"}
-              raise RuntimeError.new("[#{response.code}] #{response.body} (will retry)")
+              raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
             end
-            raise ConfigError.new("[#{response.code}] #{response.body}")
+            raise ConfigError.new("[#{response.code}] #{error_response}")
           when 500..599
-            raise RuntimeError.new("[#{response.code}] #{response.body}")
+            raise RuntimeError.new("[#{response.code}] #{error_response}")
           end
         end
 
