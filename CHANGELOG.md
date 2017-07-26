@@ -1,3 +1,7 @@
+## 0.5.2 - 2017-07-26
+* [enhancement]Enable realtime data export[#47](https://github.com/treasure-data/embulk-input-mixpanel/pull/47)  
+* [maintenance]Fix incorrect error message[#49](https://github.com/treasure-data/embulk-input-mixpanel/pull/49)
+
 ## 0.5.1 - 2016-12-13
 * Enable TCP Keepalive to protect from NAT [#48](https://github.com/treasure-data/embulk-input-mixpanel/pull/48)
 
