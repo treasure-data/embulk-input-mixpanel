@@ -29,17 +29,32 @@ module Embulk
       # between each 7 (SLICE_DAYS_COUNT) days.
       SLICE_DAYS_COUNT = 7
 
+      DEFAULT_TIME_COLUMN = 'time'
+
       def self.transaction(config, &control)
         timezone = config.param(:timezone, :string)
         TimezoneValidator.new(timezone).validate
 
         from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
         fetch_days = config.param(:fetch_days, :integer, default: nil)
-        range = RangeGenerator.new(from_date, fetch_days).generate_range
-        Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
+
 
         fetch_unknown_columns = config.param(:fetch_unknown_columns, :bool, default: false)
 
+        incremental_column = config.param(:incremental_column, :string, default: nil)
+        incremental = config.param(:incremental, :bool, default: true)
+        latest_fetched_time = config.param(:latest_fetched_time, :integer, default: 0)
+
+        # Backfill from date if incremental and an incremental field is set and we are in incremental run
+        if incremental && !incremental_column.nil? && latest_fetched_time !=0
+          back_fill_days = config.param(:back_fill_days, :integer, default: 5)
+          Embulk.logger.info "Backfill days #{back_fill_days}"
+          from_date = (Date.parse(from_date) - back_fill_days).to_s
+          fetch_days = fetch_days.nil? ? nil : fetch_days + back_fill_days
+        end
+
+        range = RangeGenerator.new(from_date, fetch_days).generate_range
+        Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
         task = {
           params: export_params(config),
           dates: range,
@@ -50,8 +65,10 @@ module Embulk
           fetch_unknown_columns: fetch_unknown_columns,
           fetch_custom_properties: config.param(:fetch_custom_properties, :bool, default: true),
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
+          incremental_column: incremental_column,
           retry_limit: config.param(:retry_limit, :integer, default: 5),
-          latest_fetched_time: config.param(:latest_fetched_time, :integer, default: 0),
+          latest_fetched_time: latest_fetched_time,
+          incremental: incremental
         }
 
         if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
@@ -82,14 +99,16 @@ module Embulk
 
         # NOTE: If this plugin supports to run by multi threads, this
         # implementation is terrible.
-        task_report = task_reports.first
-        next_to_date = Date.parse(task_report[:to_date])
-
-        next_config_diff = {
-          from_date: next_to_date.to_s,
-          latest_fetched_time: task_report[:latest_fetched_time],
-        }
-        return next_config_diff
+        if task[:incremental]
+          task_report = task_reports.first
+          next_to_date = Date.parse(task_report[:to_date])
+          next_config_diff = {
+            from_date: next_to_date.to_s,
+            latest_fetched_time: task_report[:latest_fetched_time],
+          }
+          return next_config_diff
+        end
+        return {}
       end
 
       def self.guess(config)
@@ -109,7 +128,6 @@ module Embulk
           "from_date" => range.first,
           "to_date" => range.last,
         )
-
         columns = guess_from_records(client.export_for_small_dataset(params))
         return {"columns" => columns}
       end
@@ -133,6 +151,8 @@ module Embulk
         @schema = task[:schema]
         @dates = task[:dates]
         @fetch_unknown_columns = task[:fetch_unknown_columns]
+        @incremental_column = task[:incremental_column]
+        @incremental = task[:incremental]
       end
 
       def run
@@ -146,19 +166,25 @@ module Embulk
           unless preview?
             Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
           end
+          record_time_column=@incremental_column || DEFAULT_TIME_COLUMN
+          fetch(dates,prev_latest_fetched_time).each do |record|
+            if @incremental
+              if !record["properties"].include?(record_time_column)
+                raise Embulk::ConfigError.new("Incremental column not exists in fetched data #{record_time_column}")
+              end
+              record_time = record["properties"][record_time_column]
+             if @incremental_column.nil?
+               if record_time <= prev_latest_fetched_time
+                 ignored_record_count += 1
+                 next
+               end
+             end
 
-          fetch(dates).each do |record|
-            record_time = record["properties"]["time"]
-            if record_time <= prev_latest_fetched_time
-              ignored_record_count += 1
-              next
-            end
-
-            current_latest_fetched_time= [
-              current_latest_fetched_time,
-              record_time,
-            ].max
-
+             current_latest_fetched_time= [
+               current_latest_fetched_time,
+               record_time,
+             ].max
+           end
             values = extract_values(record)
             if @fetch_unknown_columns
               unknown_values = extract_unknown_values(record)
@@ -175,14 +201,12 @@ module Embulk
           end
           break if preview?
         end
-
         page_builder.finish
-
         task_report = {
           latest_fetched_time: current_latest_fetched_time,
           to_date: @dates.last || Date.today - 1,
         }
-        return task_report
+        task_report
       end
 
       private
@@ -236,13 +260,19 @@ module Embulk
         end
       end
 
-      def fetch(dates, &block)
+      def fetch(dates,last_fetch_time, &block)
         from_date = dates.first
         to_date = dates.last
         params = @params.merge(
           "from_date" => from_date,
-          "to_date" => to_date,
+          "to_date" => to_date
         )
+        if !@incremental_column.nil? && !last_fetch_time.nil? && last_fetch_time!=0 # can't do filter on time column, time column need to be filter manually.
+          params = params.merge(
+            "where" => "#{params['where'].nil? ? '' : "(#{params['where']}) and " }properties[\"#{@incremental_column}\"] > #{last_fetch_time}"
+          )
+        end
+        Embulk.logger.info "Where params is #{params["where"]}"
         client = MixpanelApi::Client.new(@api_key, @api_secret, self.class.perfect_retry(task))
 
         if preview?
@@ -299,7 +329,7 @@ module Embulk
       end
 
       def self.guess_from_records(records)
-        sample_props = records.first(GUESS_RECORDS_COUNT).map{|r| r["properties"]}
+        sample_props = records.first(GUESS_RECORDS_COUNT).map {|r| r["properties"]}
         schema = Guess::SchemaGuess.from_hash_records(sample_props)
         columns = schema.map do |col|
           next if col.name == "time"
@@ -311,6 +341,7 @@ module Embulk
           result
         end.compact
         columns.unshift(name: NOT_PROPERTY_COLUMN, type: :string)
+        # Shift incremental column to top
         columns.unshift(name: "time", type: :long)
       end
     end

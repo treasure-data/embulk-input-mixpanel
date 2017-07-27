@@ -1,4 +1,3 @@
-
 Gem::Specification.new do |spec|
   spec.name          = "embulk-input-mixpanel"
   spec.version       = "0.5.2"

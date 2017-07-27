@@ -47,7 +47,7 @@ class RangeGenerator
     end
 
     if fetch_days
-      from_date..(from_date + fetch_days - 1)
+      from_date..(from_date + (fetch_days > 1? fetch_days - 1 : fetch_days))
     else
       from_date..today
     end
