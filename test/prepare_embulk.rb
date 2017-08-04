@@ -1,6 +1,4 @@
 module PrepareEmbulk
-  require "embulk/command/embulk_run"
-
   if Embulk.respond_to?(:home)
     # keep compatibility for Embulk 0.6.x
     classpath_dir = Embulk.home("classpath")
