@@ -1,3 +1,9 @@
+## 0.5.3 - 2017-08-07
+* [enhancement] Allow user to choose to run incremental or not `incremental` option default to true [#50](https://github.com/treasure-data/embulk-input-mixpanel/pull/50)
+* [enhancement] Allow user to specify an `incremental_column`, which will be add to the where praramter is API requests[#50](https://github.com/treasure-data/embulk-input-mixpanel/pull/50)
+* [enhancement] Allow user to specifiy backfill days, this `back_fill_time` option will tell plugin how many days we look back for data [#50](https://github.com/treasure-data/embulk-input-mixpanel/pull/50)
+
+
 ## 0.5.2 - 2017-07-26
 * [enhancement]Enable realtime data export[#47](https://github.com/treasure-data/embulk-input-mixpanel/pull/47)  
 * [maintenance]Fix incorrect error message[#49](https://github.com/treasure-data/embulk-input-mixpanel/pull/49)

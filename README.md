@@ -38,6 +38,10 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
   - NOTE: Mixpanel API supports to export data from at least 2 days before to at most the previous day.
 - **fetch_days**: Count of days range for exporting (integer, optional, default: from_date - (today - 1))
   - NOTE: Mixpanel doesn't support to from_date > today - 2
+- **incremental**: Run incremental mode nor not (boolean, optional, default: true)
+- **incremental_column**: Column to be add to where query as a constraint for incremental time. Only data that have incremental_column timestamp > than previous latest_fetched_time will be return (string, optional, default: nil)
+- **back_fill_time**: Amount of time that will be subtracted from `from_date` to calculate the final `from_date` that will be use for API Request. This is due to Mixpanel caching data on user devices before sending it to Mixpanel server (integer, optional, default: 5)
+  - NOTE: Only have effect when incremental is true and incremental_column is specified
 - **fetch_unknown_columns**(deprecated): If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: false)
   - NOTE: If true, `unknown_columns` column is created and added unknown columns' data.
 - **fetch_custom_properties**: All custom properties into `custom_properties` key. "custom properties" are not desribed Mixpanel document [1](https://mixpanel.com/help/questions/articles/special-or-reserved-properties), [2](https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default).  (boolean, optional, default: true)
