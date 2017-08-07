@@ -46,7 +46,7 @@ module Embulk
         latest_fetched_time = config.param(:latest_fetched_time, :integer, default: 0)
 
         # Backfill from date if incremental and an incremental field is set and we are in incremental run
-        if incremental && !incremental_column.nil? && latest_fetched_time !=0
+        if incremental && incremental_column && latest_fetched_time !=0
           back_fill_days = config.param(:back_fill_days, :integer, default: 5)
           Embulk.logger.info "Backfill days #{back_fill_days}"
           from_date = (Date.parse(from_date) - back_fill_days).to_s
@@ -167,24 +167,24 @@ module Embulk
             Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
           end
           record_time_column=@incremental_column || DEFAULT_TIME_COLUMN
-          fetch(dates,prev_latest_fetched_time).each do |record|
+          fetch(dates, prev_latest_fetched_time).each do |record|
             if @incremental
               if !record["properties"].include?(record_time_column)
                 raise Embulk::ConfigError.new("Incremental column not exists in fetched data #{record_time_column}")
               end
               record_time = record["properties"][record_time_column]
-             if @incremental_column.nil?
-               if record_time <= prev_latest_fetched_time
-                 ignored_record_count += 1
-                 next
-               end
-             end
+              if @incremental_column.nil?
+                if record_time <= prev_latest_fetched_time
+                  ignored_record_count += 1
+                  next
+                end
+              end
 
-             current_latest_fetched_time= [
-               current_latest_fetched_time,
-               record_time,
-             ].max
-           end
+              current_latest_fetched_time= [
+                current_latest_fetched_time,
+                record_time,
+              ].max
+            end
             values = extract_values(record)
             if @fetch_unknown_columns
               unknown_values = extract_unknown_values(record)
