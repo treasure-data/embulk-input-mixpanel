@@ -1,3 +1,4 @@
+require "embulk"
 module PrepareEmbulk
   if Embulk.respond_to?(:home)
     # keep compatibility for Embulk 0.6.x
@@ -7,9 +8,7 @@ module PrepareEmbulk
       require File.join(classpath_dir, jar)
     end
     require "embulk/java/bootstrap"
-    require "embulk"
   else
-    require "embulk"
     Embulk.setup
   end
 end

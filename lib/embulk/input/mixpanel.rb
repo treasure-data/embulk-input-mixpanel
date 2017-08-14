@@ -102,6 +102,7 @@ module Embulk
         if task[:incremental]
           task_report = task_reports.first
           next_to_date = Date.parse(task_report[:to_date])
+
           next_config_diff = {
             from_date: next_to_date.to_s,
             latest_fetched_time: task_report[:latest_fetched_time],
