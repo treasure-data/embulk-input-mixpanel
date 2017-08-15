@@ -1,3 +1,6 @@
+## 0.5.4 - 2017-08-15
+* [bug] Fix a bug when `fetch_days` is 1 plugin will fetch 2 days instead of 1 [#51](https://github.com/treasure-data/embulk-input-mixpanel/pull/51)
+
 ## 0.5.3 - 2017-08-07
 * [enhancement] Allow user to choose to run incremental or not `incremental` option default to true [#50](https://github.com/treasure-data/embulk-input-mixpanel/pull/50)
 * [enhancement] Allow user to specify an `incremental_column`, which will be add to the where praramter is API requests[#50](https://github.com/treasure-data/embulk-input-mixpanel/pull/50)
