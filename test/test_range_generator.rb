@@ -30,6 +30,26 @@ class RangeGeneratorTest < Test::Unit::TestCase
       assert_equal(expected, actual)
     end
 
+    def test_1_fetch_day
+      days = 1
+      from = "2017-08-04"
+      expected_from = Date.parse(from)
+      expected_to = Date.parse("2017-08-04")
+      expected = (expected_from..expected_to).to_a.map {|date| date.to_s}
+      actual = RangeGenerator.new(from, days).generate_range
+      assert_equal(expected, actual)
+    end
+
+    def test_5_fetch_day
+      days = 5
+      from = "2017-08-04"
+      expected_from = Date.parse(from)
+      expected_to = Date.parse("2017-08-08")
+      expected = (expected_from..expected_to).to_a.map {|date| date.to_s}
+      actual = RangeGenerator.new(from, days).generate_range
+      assert_equal(expected, actual)
+    end
+
     class OverDaysTest < self
       def setup
         @from = Date.today - 5

@@ -314,6 +314,13 @@ module Embulk
             Mixpanel.transaction(transaction_config(days), &control)
           end
 
+          def test_next_to_date
+            next_config_diff = Mixpanel.resume(transaction_task(1).merge(incremental: true), columns, 1) do
+              [{to_date: Date.today.to_s, latest_fetched_time: 1502707247000}]
+            end
+            assert_equal(Date.today.to_s, next_config_diff[:from_date])
+          end
+
           def test_valid_days_with_backfill
             days = 5
 
