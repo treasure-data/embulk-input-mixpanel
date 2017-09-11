@@ -24,11 +24,8 @@ module Embulk
         $city $region mp_country_code $browser $browser_version $device $current_url $initial_referrer $initial_referring_domain $os $referrer $referring_domain $screen_height $screen_width $search_engine $city $region $mp_country_code $timezone $browser_version $browser $initial_referrer $initial_referring_domain $os $last_seen $city $region mp_country_code $app_release $app_version $carrier $ios_ifa $os_version $manufacturer $lib_version $model $os $screen_height $screen_width $wifi $city $region $mp_country_code $timezone $ios_app_release $ios_app_version $ios_device_model $ios_lib_version $ios_version $ios_ifa $last_seen $city $region mp_country_code $app_version $bluetooth_enabled $bluetooth_version $brand $carrier $has_nfc $has_telephone $lib_version $manufacturer $model $os $os_version $screen_dpi $screen_height $screen_width $wifi $google_play_services $city $region mp_country_code $timezone $android_app_version $android_app_version_code $android_lib_version $android_os $android_os_version $android_brand $android_model $android_manufacturer $last_seen
       ).uniq.freeze
 
-      # NOTE: It takes long time to fetch data between from_date to
-      # to_date by one API request. So this plugin fetches data
-      # between each 7 (SLICE_DAYS_COUNT) days.
-      SLICE_DAYS_COUNT = 7
 
+      DEFAULT_FETCH_DAYS = 7
       DEFAULT_TIME_COLUMN = 'time'
 
       def self.transaction(config, &control)
@@ -68,7 +65,8 @@ module Embulk
           incremental_column: incremental_column,
           retry_limit: config.param(:retry_limit, :integer, default: 5),
           latest_fetched_time: latest_fetched_time,
-          incremental: incremental
+          incremental: incremental,
+          slice_range: config.param(:slice_range, :integer, default: 7)
         }
 
         if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
@@ -161,8 +159,7 @@ module Embulk
         prev_latest_fetched_time = task[:latest_fetched_time] || 0
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
         current_latest_fetched_time = prev_latest_fetched_time
-
-        @dates.each_slice(SLICE_DAYS_COUNT) do |dates|
+        @dates.each_slice(task[:slice_range]) do |dates|
           ignored_record_count = 0
           unless preview?
             Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
@@ -196,7 +193,6 @@ module Embulk
             end
             page_builder.add(values)
           end
-
           if ignored_record_count > 0
             Embulk.logger.warn "Skipped already loaded #{ignored_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."
           end
@@ -316,12 +312,12 @@ module Embulk
       end
 
       def self.default_guess_start_date
-        Date.today - SLICE_DAYS_COUNT - 1
+        Date.today - DEFAULT_FETCH_DAYS - 1
       end
 
       def self.guess_range(config)
         from_date = config.param(:from_date, :string, default: default_guess_start_date.to_s)
-        fetch_days = config.param(:fetch_days, :integer, default: SLICE_DAYS_COUNT)
+        fetch_days = config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
         range = RangeGenerator.new(from_date, fetch_days).generate_range
         if range.empty?
           return default_guess_start_date..(Date.today - 1)

@@ -541,6 +541,7 @@ module Embulk
             retry_initial_wait_sec: 0,
             retry_limit: 3,
             latest_fetched_time: 0,
+            slice_range: 7
           }
         end
       end
@@ -583,6 +584,20 @@ module Embulk
           mock(@page_builder).finish
 
           @plugin.run
+        end
+
+        class SliceRangeRunTest < self
+
+          def test_default_slice_range
+            plugin = Mixpanel.new(task.merge(slice_range: 2), nil, nil, @page_builder)
+            stub(plugin).preview? {false}
+            stub(plugin).fetch(["2015-02-22", "2015-02-23"],0){[]}
+            stub(plugin).fetch(["2015-02-24", "2015-02-25"],0){[]}
+            stub(plugin).fetch(["2015-02-26", "2015-02-27"],0){[]}
+            stub(plugin).fetch(["2015-02-28", "2015-03-01"],0){[]}
+            mock(@page_builder).finish
+            plugin.run
+          end
         end
 
         class NonIncrementalRunTest < self
@@ -807,6 +822,7 @@ module Embulk
           retry_initial_wait_sec: 2,
           retry_limit: 3,
           latest_fetched_time: 0,
+          slice_range: 7
         }
       end
 
