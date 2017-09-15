@@ -40,7 +40,7 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
   - NOTE: Mixpanel doesn't support to from_date > today - 2
 - **incremental**: Run incremental mode nor not (boolean, optional, default: true)
 - **incremental_column**: Column to be add to where query as a constraint for incremental time. Only data that have incremental_column timestamp > than previous latest_fetched_time will be return (string, optional, default: nil)
-- **back_fill_time**: Amount of time that will be subtracted from `from_date` to calculate the final `from_date` that will be use for API Request. This is due to Mixpanel caching data on user devices before sending it to Mixpanel server (integer, optional, default: 5)
+- **back_fill_days**: Number of days that will be subtracted from `from_date` to calculate the final `from_date` that will be use for API Request. This is due to Mixpanel caching data on user devices before sending it to Mixpanel server (integer, optional, default: 5)
   - NOTE: Only have effect when incremental is true and incremental_column is specified
 - **fetch_unknown_columns**(deprecated): If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: false)
   - NOTE: If true, `unknown_columns` column is created and added unknown columns' data.
