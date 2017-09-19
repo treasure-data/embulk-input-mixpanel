@@ -571,7 +571,7 @@ module Embulk
 
         def test_run
           stub(@plugin).preview? { false }
-          mock(@page_builder).add(anything).times(records.length * 2)
+          mock(@page_builder).add(anything).times(records.length)
           mock(@page_builder).finish
 
           @plugin.run
@@ -580,7 +580,7 @@ module Embulk
         def test_timezone
           stub(@plugin).preview? { false }
           adjusted = record_epoch - timezone_offset_seconds
-          mock(@page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
+          mock(@page_builder).add(["FOO", adjusted, "event"]).times(records.length)
           mock(@page_builder).finish
 
           @plugin.run
@@ -592,9 +592,9 @@ module Embulk
             plugin = Mixpanel.new(task.merge(slice_range: 2), nil, nil, @page_builder)
             stub(plugin).preview? {false}
             stub(plugin).fetch(["2015-02-22", "2015-02-23"],0){[]}
-            stub(plugin).fetch(["2015-02-24", "2015-02-25"],0){[]}
-            stub(plugin).fetch(["2015-02-26", "2015-02-27"],0){[]}
-            stub(plugin).fetch(["2015-02-28", "2015-03-01"],0){[]}
+            stub(plugin).fetch(["2015-02-22", "2015-02-25"],0){[]}
+            stub(plugin).fetch(["2015-02-22", "2015-02-27"],0){[]}
+            stub(plugin).fetch(["2015-02-22", "2015-03-01"],0){[]}
             mock(@page_builder).finish
             plugin.run
           end
@@ -644,8 +644,14 @@ module Embulk
             mock(page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
             mock(page_builder).finish
             any_instance_of(MixpanelApi::Client) do |klass|
-              stub(klass).export() do |params, block|
-                assert_equal('(abc==def) and properties["mp_processing_time_ms"] > 1',params["where"])
+              stub(klass).export(satisfy{|params|
+                '(abc==def) and properties["mp_processing_time_ms"] > 1'==params["where"]
+              }).once do |params, block|
+                records.each{|record| block.call(record) }
+              end
+              stub(klass).export(satisfy{|params|
+                '(abc==def) and properties["mp_processing_time_ms"] > 1234567919'==params["where"]
+              }).once do |params, block|
                 records.each{|record| block.call(record) }
               end
             end
@@ -661,8 +667,14 @@ module Embulk
             mock(page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
             mock(page_builder).finish
             any_instance_of(MixpanelApi::Client) do |klass|
-              stub(klass).export() do |params, block|
-                assert_equal('properties["mp_processing_time_ms"] > 1',params["where"])
+              stub(klass).export(satisfy {|params|
+                'properties["mp_processing_time_ms"] > 1'==params["where"]
+              }).once() do |params,block|
+                records.each{|record| block.call(record) }
+              end
+              stub(klass).export(satisfy {|params|
+                'properties["mp_processing_time_ms"] > 1234567919' == params["where"]
+              }).once() do |params,block|
                 records.each{|record| block.call(record) }
               end
             end
@@ -770,7 +782,7 @@ module Embulk
               {"int" => properties["int"], "event" => record["event"]}.to_json
             ]
 
-            mock(@page_builder).add(added).times(records.length * 2)
+            mock(@page_builder).add(added).times(records.length)
             mock(@page_builder).finish
 
             @plugin.run
