@@ -1,3 +1,9 @@
+## 0.5.6 - 2017-09-20
+* [bug] Fix issue when back_fill data get processed by Mixpanel when plugin is running [#54](https://github.com/treasure-data/embulk-input-mixpanel/pull/54)
+
+## 0.5.5 - 2017-09-11
+* [enhancement] Add slice_range configuration [#52](https://github.com/treasure-data/embulk-input-mixpanel/pull/52)
+
 ## 0.5.4 - 2017-08-15
 * [bug] Fix a bug when `fetch_days` is 1 plugin will fetch 2 days instead of 1 [#51](https://github.com/treasure-data/embulk-input-mixpanel/pull/51)
 
