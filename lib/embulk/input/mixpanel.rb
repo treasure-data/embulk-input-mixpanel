@@ -159,13 +159,13 @@ module Embulk
         prev_latest_fetched_time = task[:latest_fetched_time] || 0
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
         current_latest_fetched_time = prev_latest_fetched_time
-        @dates.each_slice(task[:slice_range]) do |dates|
+        @dates.each_slice(task[:slice_range]) do |sliced_dates|
           ignored_record_count = 0
           unless preview?
-            Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
+            Embulk.logger.info "Fetching data from #{@dates.first} to #{sliced_dates.last} ..."
           end
           record_time_column=@incremental_column || DEFAULT_TIME_COLUMN
-          fetch(dates, prev_latest_fetched_time).each do |record|
+          fetch([@dates.first, sliced_dates.last], prev_latest_fetched_time).each do |record|
             if @incremental
               if !record["properties"].include?(record_time_column)
                 raise Embulk::ConfigError.new("Incremental column not exists in fetched data #{record_time_column}")
@@ -193,6 +193,7 @@ module Embulk
             end
             page_builder.add(values)
           end
+          prev_latest_fetched_time = [current_latest_fetched_time, prev_latest_fetched_time].max
           if ignored_record_count > 0
             Embulk.logger.warn "Skipped already loaded #{ignored_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."
           end
