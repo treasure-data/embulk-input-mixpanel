@@ -66,7 +66,8 @@ module Embulk
           retry_limit: config.param(:retry_limit, :integer, default: 5),
           latest_fetched_time: latest_fetched_time,
           incremental: incremental,
-          slice_range: config.param(:slice_range, :integer, default: 7)
+          slice_range: config.param(:slice_range, :integer, default: 7),
+          job_start_time: Time.now.to_i*1000
         }
 
         if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
@@ -159,13 +160,13 @@ module Embulk
         prev_latest_fetched_time = task[:latest_fetched_time] || 0
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
         current_latest_fetched_time = prev_latest_fetched_time
-        @dates.each_slice(task[:slice_range]) do |sliced_dates|
+        @dates.each_slice(task[:slice_range]) do |dates|
           ignored_record_count = 0
           unless preview?
-            Embulk.logger.info "Fetching data from #{@dates.first} to #{sliced_dates.last} ..."
+            Embulk.logger.info "Fetching data from #{dates.first} to #{dates.last} ..."
           end
           record_time_column=@incremental_column || DEFAULT_TIME_COLUMN
-          fetch([@dates.first, sliced_dates.last], prev_latest_fetched_time).each do |record|
+          fetch(dates, prev_latest_fetched_time).each do |record|
             if @incremental
               if !record["properties"].include?(record_time_column)
                 raise Embulk::ConfigError.new("Incremental column not exists in fetched data #{record_time_column}")
@@ -193,7 +194,6 @@ module Embulk
             end
             page_builder.add(values)
           end
-          prev_latest_fetched_time = [current_latest_fetched_time, prev_latest_fetched_time].max
           if ignored_record_count > 0
             Embulk.logger.warn "Skipped already loaded #{ignored_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."
           end
@@ -258,16 +258,16 @@ module Embulk
         end
       end
 
-      def fetch(dates,last_fetch_time, &block)
+      def fetch(dates, last_fetch_time, &block)
         from_date = dates.first
         to_date = dates.last
         params = @params.merge(
           "from_date" => from_date,
           "to_date" => to_date
         )
-        if !@incremental_column.nil? && !last_fetch_time.nil? && last_fetch_time!=0 # can't do filter on time column, time column need to be filter manually.
+        if !@incremental_column.nil? # can't do filter on time column, time column need to be filter manually.
           params = params.merge(
-            "where" => "#{params['where'].nil? ? '' : "(#{params['where']}) and " }properties[\"#{@incremental_column}\"] > #{last_fetch_time}"
+            "where" => "#{params['where'].nil? ? '' : "(#{params['where']}) and " }properties[\"#{@incremental_column}\"] > #{last_fetch_time || 0} and properties[\"#{@incremental_column}\"] < #{task[:job_start_time]}"
           )
         end
         Embulk.logger.info "Where params is #{params["where"]}"
