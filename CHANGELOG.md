@@ -1,4 +1,4 @@
-## 0.5.7 - 2017-09-26
+## 0.5.8 - 2017-09-26
 
 * [bug] Fix issue when back_fill data get processed by Mixpanel when plugin is running [#56](https://github.com/treasure-data/embulk-input-mixpanel/pull/56)
 * [bug] Revert PR #54 [#56](https://github.com/treasure-data/embulk-input-mixpanel/pull/56)
