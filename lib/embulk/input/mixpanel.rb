@@ -52,6 +52,9 @@ module Embulk
 
         range = RangeGenerator.new(from_date, fetch_days).generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
+        job_start_time = Time.now.to_i*1000
+        upper_limit_delay = config.param(:incremental_column_upper_limit_delay_in_seconds, :integer, default: 0)
+        incremental_column_upper_limit = job_start_time - (upper_limit_delay * 1000)
         task = {
           params: export_params(config),
           dates: range,
@@ -67,8 +70,13 @@ module Embulk
           latest_fetched_time: latest_fetched_time,
           incremental: incremental,
           slice_range: config.param(:slice_range, :integer, default: 7),
-          job_start_time: Time.now.to_i*1000
+          job_start_time: job_start_time,
+          incremental_column_upper_limit: incremental_column_upper_limit
         }
+
+        if !incremental_column.nil? && !latest_fetched_time.nil? && (incremental_column_upper_limit <= latest_fetched_time)
+            raise Embulk::ConfigError.new("Incremental column upper limit (job_start_time - incremental_column_upper_limit_delay_in_seconds) can't be smaller or equal latest fetched time #{latest_fetched_time}")
+        end
 
         if task[:fetch_unknown_columns] && task[:fetch_custom_properties]
           raise Embulk::ConfigError.new("Don't set true both `fetch_unknown_columns` and `fetch_custom_properties`.")
@@ -156,6 +164,7 @@ module Embulk
       end
 
       def run
+        Embulk.logger.info "Job start time is #{task[:job_start_time]}"
         self.class.giveup_when_mixpanel_is_down
         prev_latest_fetched_time = task[:latest_fetched_time] || 0
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
@@ -267,7 +276,7 @@ module Embulk
         )
         if !@incremental_column.nil? # can't do filter on time column, time column need to be filter manually.
           params = params.merge(
-            "where" => "#{params['where'].nil? ? '' : "(#{params['where']}) and " }properties[\"#{@incremental_column}\"] > #{last_fetch_time || 0} and properties[\"#{@incremental_column}\"] < #{task[:job_start_time]}"
+            "where" => "#{params['where'].nil? ? '' : "(#{params['where']}) and " }properties[\"#{@incremental_column}\"] > #{last_fetch_time || 0} and properties[\"#{@incremental_column}\"] < #{task[:incremental_column_upper_limit]}"
           )
         end
         Embulk.logger.info "Where params is #{params["where"]}"
