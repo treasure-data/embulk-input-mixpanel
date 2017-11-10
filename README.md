@@ -42,6 +42,8 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 - **incremental_column**: Column to be add to where query as a constraint for incremental time. Only data that have incremental_column timestamp > than previous latest_fetched_time will be return (string, optional, default: nil)
 - **back_fill_time**: Amount of time that will be subtracted from `from_date` to calculate the final `from_date` that will be use for API Request. This is due to Mixpanel caching data on user devices before sending it to Mixpanel server (integer, optional, default: 5)
   - NOTE: Only have effect when incremental is true and incremental_column is specified
+- **incremental_column_upper_limit_delay_in_seconds**: When query with incremental column, plugin will lock the upper limit of incremental column query with the job start time, in order to avoid issue with data that commit when the job is running
+ ex: `where mp_processing_time <= job_start_time`. The upper limit will be calculated by using job_start_time minus with this configuration parameter. This is to support case when Mixpanel have delay in their processing (integer, optional, default: 0)
 - **fetch_unknown_columns**(deprecated): If you want this plugin fetches unknown (unconfigured in config) columns (boolean, optional, default: false)
   - NOTE: If true, `unknown_columns` column is created and added unknown columns' data.
 - **fetch_custom_properties**: All custom properties into `custom_properties` key. "custom properties" are not desribed Mixpanel document [1](https://mixpanel.com/help/questions/articles/special-or-reserved-properties), [2](https://mixpanel.com/help/questions/articles/what-properties-do-mixpanels-libraries-store-by-default).  (boolean, optional, default: true)

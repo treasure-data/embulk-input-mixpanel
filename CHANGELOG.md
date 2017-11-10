@@ -1,7 +1,11 @@
+## 0.5.9 - 2017-11-10
+
+* [enhancement] Add upper limit delay to incremental column query [#56](https://github.com/treasure-data/embulk-input-mixpanel/pull/56)
+
 ## 0.5.8 - 2017-09-26
 
-* [bug] Fix issue when back_fill data get processed by Mixpanel when plugin is running [#56](https://github.com/treasure-data/embulk-input-mixpanel/pull/56)
-* [bug] Revert PR #54 [#56](https://github.com/treasure-data/embulk-input-mixpanel/pull/56)
+* [bug] Fix issue when back_fill data get processed by Mixpanel when plugin is running
+* [bug] Revert PR #54
 
 ## 0.5.6 - 2017-09-20
 * [bug] Fix issue when back_fill data get processed by Mixpanel when plugin is running [#54](https://github.com/treasure-data/embulk-input-mixpanel/pull/54)
