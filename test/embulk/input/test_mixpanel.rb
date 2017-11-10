@@ -16,6 +16,7 @@ module Embulk
       DATES = Date.parse(FROM_DATE)..(Date.parse(FROM_DATE) + DAYS - 1)
       TIMEZONE = "Asia/Tokyo".freeze
       JOB_START_TIME = 1506407051000
+      UPPER_LIMIT_DELAY = 300 # 300 seconds delay
       DURATIONS = [
         {from_date: FROM_DATE, to_date: "2015-02-28"}, # It has 7 days between 2015-02-22 and 2015-02-28
         {from_date: "2015-03-01", to_date: TO_DATE},
@@ -46,9 +47,13 @@ module Embulk
         end
       end
       def satisfy_task_ignore_start_time(expected_task)
-        satisfy{|input_task|
+        satisfy {|input_task|
           assert_not_nil(input_task[:job_start_time])
-          assert_equal(expected_task, input_task.merge(job_start_time: expected_task[:job_start_time]))
+          # This will also verify incremental column upper limit
+          assert_equal(input_task[:incremental_column_upper_limit], input_task[:job_start_time] - UPPER_LIMIT_DELAY * 1000)
+          expected_task[:job_start_time] = input_task[:job_start_time]
+          expected_task[:incremental_column_upper_limit] = input_task[:incremental_column_upper_limit]
+          assert_equal(expected_task, input_task)
           true
         }
       end
@@ -650,7 +655,7 @@ module Embulk
             mock(page_builder).finish
             any_instance_of(MixpanelApi::Client) do |klass|
               stub(klass).export() do |params, block|
-                assert_equal("(abc==def) and properties[\"mp_processing_time_ms\"] > 1 and properties[\"mp_processing_time_ms\"] < #{JOB_START_TIME}",params["where"])
+                assert_equal("(abc==def) and properties[\"mp_processing_time_ms\"] > 1 and properties[\"mp_processing_time_ms\"] < #{JOB_START_TIME - UPPER_LIMIT_DELAY * 1000}",params["where"])
                 records.each{|record| block.call(record) }
               end
             end
@@ -667,7 +672,7 @@ module Embulk
             mock(page_builder).finish
             any_instance_of(MixpanelApi::Client) do |klass|
               stub(klass).export() do |params, block|
-                assert_equal("properties[\"mp_processing_time_ms\"] > 1 and properties[\"mp_processing_time_ms\"] < #{JOB_START_TIME}",params["where"])
+                assert_equal("properties[\"mp_processing_time_ms\"] > 1 and properties[\"mp_processing_time_ms\"] < #{JOB_START_TIME - UPPER_LIMIT_DELAY * 1000}",params["where"])
                 records.each{|record| block.call(record) }
               end
             end
@@ -828,7 +833,8 @@ module Embulk
           retry_limit: 3,
           latest_fetched_time: 0,
           slice_range: 7,
-          job_start_time: JOB_START_TIME
+          job_start_time: JOB_START_TIME,
+          incremental_column_upper_limit: (JOB_START_TIME - UPPER_LIMIT_DELAY * 1000)
         }
       end
 
@@ -865,6 +871,7 @@ module Embulk
           retry_initial_wait_sec: 2,
           retry_limit: 3,
           latest_fetched_time: 0,
+          incremental_column_upper_limit_delay_in_seconds: UPPER_LIMIT_DELAY
         }
       end
 
