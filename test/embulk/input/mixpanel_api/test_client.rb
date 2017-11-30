@@ -1,4 +1,5 @@
 require "embulk/input/mixpanel_api/client"
+require "embulk/input/mixpanel_api/exceptions"
 require "override_assert_raise"
 
 module Embulk
@@ -84,6 +85,33 @@ module Embulk
               records << record
             end
 
+            assert_equal(dummy_responses, records)
+          end
+
+          def test_export_partial_with_export_terminated_early
+            stub_client
+            stub(@client).set_signatures(anything) {}
+            stub_response(Struct.new(:code, :body).new(200, jsonl_dummy_responses+"\nexport terminated early"))
+
+            records = []
+            assert_raise MixpanelApi::IncompleteExportResponseError do
+              @client.export(params) do |record|
+                records << record
+              end
+            end
+            assert_equal(dummy_responses, records)
+          end
+
+          def test_export_partial_with_error_json
+            stub_client
+            stub(@client).set_signatures(anything) {}
+            stub_response(Struct.new(:code, :body).new(200, jsonl_dummy_responses+"\n{\"error\":"))
+            records = []
+            assert_raise MixpanelApi::IncompleteExportResponseError do
+              @client.export(params) do |record|
+                records << record
+              end
+            end
             assert_equal(dummy_responses, records)
           end
 
