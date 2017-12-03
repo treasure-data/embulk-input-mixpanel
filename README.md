@@ -53,6 +53,7 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 - **bucket**:The data backet to filter data (string, optional, default: nil)
 - **retry_initial_wait_sec** Wait seconds for exponential backoff initial value (integer, default: 1)
 - **retry_limit**: Try to retry this times (integer, default: 5)
+- **allow_partial_import**: Allow plugin to skip errored import (boolean, default: true)
 
 ### `fetch_unknown_columns` and `fetch_custom_properties`
 

@@ -1,3 +1,7 @@
+## 0.5.10 - 2017-12-03
+
+* [enhancement] Add logic to detect error from Mixpanel when doing import, add option to failed embulk job if encounter error import [#57](https://github.com/treasure-data/embulk-input-mixpanel/pull/57)
+
 ## 0.5.9 - 2017-11-10
 
 * [enhancement] Add upper limit delay to incremental column query [#56](https://github.com/treasure-data/embulk-input-mixpanel/pull/56)
