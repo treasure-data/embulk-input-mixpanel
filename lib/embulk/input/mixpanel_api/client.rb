@@ -2,6 +2,7 @@ require "uri"
 require "digest/md5"
 require "json"
 require "httpclient"
+require "embulk/input/mixpanel_api/exceptions"
 
 module Embulk
   module Input
@@ -118,6 +119,11 @@ module Embulk
             end
           end
           handle_error(response, error_response)
+          if !buf.empty?
+            #   buffer is not empty mean the last json line is incomplete
+            Embulk.logger.error "Received incomplete data from Mixpanel, #{buf}"
+            raise MixpanelApi::IncompleteExportResponseError.new("Incomplete data received")
+          end
         end
 
         def request_small_dataset(params, range)

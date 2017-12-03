@@ -1,6 +1,7 @@
 require "tzinfo"
 require "perfect_retry"
 require "embulk/input/mixpanel_api/client"
+require "embulk/input/mixpanel_api/exceptions"
 require "range_generator"
 require "timezone_validator"
 
@@ -71,7 +72,8 @@ module Embulk
           incremental: incremental,
           slice_range: config.param(:slice_range, :integer, default: 7),
           job_start_time: job_start_time,
-          incremental_column_upper_limit: incremental_column_upper_limit
+          incremental_column_upper_limit: incremental_column_upper_limit,
+          allow_partial_import: config.param(:allow_partial_import,:bool, default: true)
         }
 
         if !incremental_column.nil? && !latest_fetched_time.nil? && (incremental_column_upper_limit <= latest_fetched_time)
@@ -144,7 +146,7 @@ module Embulk
         PerfectRetry.new do |config|
           config.limit = task[:retry_limit]
           config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
-          config.dont_rescues = [Embulk::ConfigError]
+          config.dont_rescues = [Embulk::ConfigError,MixpanelApi::IncompleteExportResponseError]
           config.rescues = [RuntimeError]
           config.log_level = nil
           config.logger = Embulk.logger
@@ -175,33 +177,40 @@ module Embulk
             Embulk.logger.info "Fetching data from #{slice_dates.first} to #{slice_dates.last} ..."
           end
           record_time_column=@incremental_column || DEFAULT_TIME_COLUMN
-          fetch(slice_dates, prev_latest_fetched_time).each do |record|
-            if @incremental
-              if !record["properties"].include?(record_time_column)
-                raise Embulk::ConfigError.new("Incremental column not exists in fetched data #{record_time_column}")
-              end
-              record_time = record["properties"][record_time_column]
-              if @incremental_column.nil?
-                if record_time <= prev_latest_fetched_time
-                  ignored_record_count += 1
-                  next
+          begin
+            fetch(slice_dates, prev_latest_fetched_time).each do |record|
+              if @incremental
+                if !record["properties"].include?(record_time_column)
+                  raise Embulk::ConfigError.new("Incremental column not exists in fetched data #{record_time_column}")
                 end
-              end
+                record_time = record["properties"][record_time_column]
+                if @incremental_column.nil?
+                  if record_time <= prev_latest_fetched_time
+                    ignored_record_count += 1
+                    next
+                  end
+                end
 
-              current_latest_fetched_time= [
-                current_latest_fetched_time,
-                record_time,
-              ].max
+                current_latest_fetched_time= [
+                  current_latest_fetched_time,
+                  record_time,
+                ].max
+              end
+              values = extract_values(record)
+              if @fetch_unknown_columns
+                unknown_values = extract_unknown_values(record)
+                values << unknown_values.to_json
+              end
+              if task[:fetch_custom_properties]
+                values << collect_custom_properties(record)
+              end
+              page_builder.add(values)
             end
-            values = extract_values(record)
-            if @fetch_unknown_columns
-              unknown_values = extract_unknown_values(record)
-              values << unknown_values.to_json
+          rescue MixpanelApi::IncompleteExportResponseError
+            if !task[:allow_partial_import]
+            #   re raise the exception if we don't allow partial import
+              raise
             end
-            if task[:fetch_custom_properties]
-              values << collect_custom_properties(record)
-            end
-            page_builder.add(values)
           end
           if ignored_record_count > 0
             Embulk.logger.warn "Skipped already loaded #{ignored_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."

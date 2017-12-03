@@ -595,7 +595,32 @@ module Embulk
 
           @plugin.run
         end
+        class PartialRunTest < self
+          def setup_client
+            any_instance_of(MixpanelApi::Client) do |klass|
+              stub(klass).request { raise MixpanelApi::IncompleteExportResponseError.new("Incomplete data received") }
+            end
+          end
+          def setup
+            setup_client()
+            @page_builder = Object.new
+          end
 
+          def test_run_with_allow_partial_false
+            @plugin = Mixpanel.new(task.merge(allow_partial_import: false), nil, nil, @page_builder)
+            stub(@plugin).preview? {false}
+            assert_raise MixpanelApi::IncompleteExportResponseError do
+              @plugin.run
+            end
+          end
+
+          def test_run_with_allow_partial_true
+            @plugin = Mixpanel.new(task.merge(allow_partial_import: true), nil, nil, @page_builder)
+            mock(@page_builder).finish
+            stub(@plugin).preview? {false}
+            @plugin.run
+          end
+        end
         class SliceRangeRunTest < self
 
           def test_default_slice_range
@@ -725,7 +750,6 @@ module Embulk
 
             @plugin.run
           end
-
           private
 
           def task
@@ -834,7 +858,8 @@ module Embulk
           latest_fetched_time: 0,
           slice_range: 7,
           job_start_time: JOB_START_TIME,
-          incremental_column_upper_limit: (JOB_START_TIME - UPPER_LIMIT_DELAY * 1000)
+          incremental_column_upper_limit: (JOB_START_TIME - UPPER_LIMIT_DELAY * 1000),
+          allow_partial_import: true
         }
       end
 
