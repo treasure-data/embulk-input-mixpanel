@@ -8,7 +8,6 @@ module Embulk
   module Input
     module MixpanelApi
       class Client
-        ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
         PING_TIMEOUT_SECONDS = 3
         PING_RETRY_LIMIT = 3
@@ -37,7 +36,8 @@ module Embulk
           end
         end
 
-        def initialize(api_key, api_secret, retryer = nil)
+        def initialize(endpoint, api_key, api_secret, retryer = nil)
+          @endpoint = endpoint
           @api_key = api_key
           @api_secret = api_secret
           @retryer = retryer || PerfectRetry.new do |config|
@@ -102,7 +102,7 @@ module Embulk
 
           buf = ""
           error_response = ''
-          response = httpclient.get(ENDPOINT_EXPORT, params) do |response, chunk|
+          response = httpclient.get(@endpoint, params) do |response, chunk|
             # Only process data if response status is 200..299
             if response.status/100 == 2
               chunk.each_line do |line|
@@ -130,10 +130,10 @@ module Embulk
           # guess/preview
           # Try to fetch first `range` bytes
           set_signatures(params)
-          res = httpclient.get(ENDPOINT_EXPORT, params, {"Range" => "bytes=#{range}"})
+          res = httpclient.get(@endpoint, params, {"Range" => "bytes=#{range}"})
           if res.code == 416
             # cannot satisfied requested Range, get full body
-            res = httpclient.get(ENDPOINT_EXPORT, params)
+            res = httpclient.get(@endpoint, params)
           end
           handle_error(res,res.body)
           response_to_enum(res.body)
