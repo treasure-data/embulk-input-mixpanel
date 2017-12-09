@@ -61,7 +61,7 @@ module Embulk
           params: export_params(config),
           dates: range,
           timezone: timezone,
-          export_endpoint: config.param(:export_endpoint, :string, default: DEFAULT_EXPORT_ENDPOINT),
+          export_endpoint: export_endpoint(config),
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
@@ -124,13 +124,13 @@ module Embulk
       end
 
       def self.guess(config)
-        giveup_when_mixpanel_is_down
+        giveup_when_mixpanel_is_down(export_endpoint(config))
 
         retryer = perfect_retry({
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         })
-        client = MixpanelApi::Client.new(config.param(:export_endpoint, :string, default: DEFAULT_EXPORT_ENDPOINT),
+        client = MixpanelApi::Client.new(export_endpoint(config),
                                          config.param(:api_key, :string),
                                          config.param(:api_secret, :string), retryer)
 
@@ -156,6 +156,10 @@ module Embulk
         end
       end
 
+      def self.export_endpoint(config)
+        config.param(:export_endpoint, :string, default: DEFAULT_EXPORT_ENDPOINT)
+      end
+
       def init
         @export_endpoint = task[:export_endpoint]
         @api_key = task[:api_key]
@@ -171,7 +175,7 @@ module Embulk
 
       def run
         Embulk.logger.info "Job start time is #{task[:job_start_time]}"
-        self.class.giveup_when_mixpanel_is_down
+        self.class.giveup_when_mixpanel_is_down(task[:export_endpoint])
         prev_latest_fetched_time = task[:latest_fetched_time] || 0
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
         current_latest_fetched_time = prev_latest_fetched_time
@@ -231,8 +235,8 @@ module Embulk
 
       private
 
-      def self.giveup_when_mixpanel_is_down
-        unless MixpanelApi::Client.mixpanel_available?
+      def self.giveup_when_mixpanel_is_down(export_endpoint)
+        unless MixpanelApi::Client.mixpanel_available?(export_endpoint)
           raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")
         end
       end

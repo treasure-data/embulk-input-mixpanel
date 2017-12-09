@@ -16,7 +16,7 @@ module Embulk
 
         attr_reader :retryer
 
-        def self.mixpanel_available?
+        def self.mixpanel_available?(endpoint)
           retryer = PerfectRetry.new do |config|
             config.limit = PING_RETRY_LIMIT
             config.sleep = PING_RETRY_WAIT
@@ -28,7 +28,7 @@ module Embulk
             retryer.with_retry do
               client = HTTPClient.new
               client.connect_timeout = PING_TIMEOUT_SECONDS
-              client.get("https://data.mixpanel.com")
+              client.get(URI.join(endpoint, '/'))
             end
             true
           rescue PerfectRetry::TooManyRetry
