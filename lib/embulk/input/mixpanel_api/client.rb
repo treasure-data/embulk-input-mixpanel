@@ -13,10 +13,12 @@ module Embulk
         PING_RETRY_LIMIT = 3
         PING_RETRY_WAIT = 2
         SMALLSET_BYTE_RANGE = "0-#{5 * 1024 * 1024}"
+        DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
 
         attr_reader :retryer
 
-        def self.mixpanel_available?(endpoint)
+        def self.mixpanel_available?(endpoint = nil)
+          endpoint ||= DEFAULT_EXPORT_ENDPOINT
           retryer = PerfectRetry.new do |config|
             config.limit = PING_RETRY_LIMIT
             config.sleep = PING_RETRY_WAIT
@@ -36,7 +38,7 @@ module Embulk
           end
         end
 
-        def initialize(endpoint, api_key, api_secret, retryer = nil)
+        def initialize(api_key, api_secret, retryer = nil, endpoint = DEFAULT_EXPORT_ENDPOINT)
           @endpoint = endpoint
           @api_key = api_key
           @api_secret = api_secret

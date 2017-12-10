@@ -26,7 +26,6 @@ module Embulk
       ).uniq.freeze
 
 
-      DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
       DEFAULT_FETCH_DAYS = 7
       DEFAULT_TIME_COLUMN = 'time'
 
@@ -130,9 +129,10 @@ module Embulk
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         })
-        client = MixpanelApi::Client.new(export_endpoint(config),
-                                         config.param(:api_key, :string),
-                                         config.param(:api_secret, :string), retryer)
+        client = MixpanelApi::Client.new(config.param(:api_key, :string),
+                                         config.param(:api_secret, :string),
+                                         retryer,
+                                         export_endpoint(config))
 
         range = guess_range(config)
         Embulk.logger.info "Guessing schema using #{range.first}..#{range.last} records"
@@ -157,7 +157,7 @@ module Embulk
       end
 
       def self.export_endpoint(config)
-        config.param(:export_endpoint, :string, default: DEFAULT_EXPORT_ENDPOINT)
+        config.param(:export_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_EXPORT_ENDPOINT)
       end
 
       def init
@@ -297,7 +297,7 @@ module Embulk
           )
         end
         Embulk.logger.info "Where params is #{params["where"]}"
-        client = MixpanelApi::Client.new(@export_endpoint, @api_key, @api_secret, self.class.perfect_retry(task))
+        client = MixpanelApi::Client.new(@api_key, @api_secret, self.class.perfect_retry(task), @export_endpoint)
 
         if preview?
           client.export_for_small_dataset(params)
