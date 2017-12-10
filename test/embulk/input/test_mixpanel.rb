@@ -541,6 +541,7 @@ module Embulk
           {
             api_key: API_KEY,
             api_secret: API_SECRET,
+            export_endpoint: "https://data.mixpanel.com/api/2.0/export/",
             timezone: TIMEZONE,
             schema: schema,
             dates: DATES.to_a.map(&:to_s),
@@ -845,6 +846,7 @@ module Embulk
         {
           api_key: API_KEY,
           api_secret: API_SECRET,
+          export_endpoint: "https://data.mixpanel.com/api/2.0/export/",
           timezone: TIMEZONE,
           incremental: true,
           incremental_column: nil,
