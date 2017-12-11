@@ -104,6 +104,7 @@ module Embulk
 
           buf = ""
           error_response = ''
+          Embulk.logger.info "Sending request to #{@endpoint}"
           response = httpclient.get(@endpoint, params) do |response, chunk|
             # Only process data if response status is 200..299
             if response.status/100 == 2
@@ -132,6 +133,7 @@ module Embulk
           # guess/preview
           # Try to fetch first `range` bytes
           set_signatures(params)
+          Embulk.logger.info "Sending request to #{@endpoint}"
           res = httpclient.get(@endpoint, params, {"Range" => "bytes=#{range}"})
           if res.code == 416
             # cannot satisfied requested Range, get full body
