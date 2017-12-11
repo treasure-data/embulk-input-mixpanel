@@ -33,6 +33,7 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 
 - **api_key**: project API Key (string, required)
 - **api_secret**: project API Secret (string, required)
+- **export_endpoint**: the Data Export API's endpoint (string, default to "http://data.mixpanel.com/api/2.0/export")
 - **timezone**: project timezone(string, required)
 - **from_date**: From date to export (string, optional, default: today - 2)
   - NOTE: Mixpanel API supports to export data from at least 2 days before to at most the previous day.

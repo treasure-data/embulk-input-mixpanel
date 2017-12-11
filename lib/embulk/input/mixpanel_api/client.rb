@@ -8,16 +8,17 @@ module Embulk
   module Input
     module MixpanelApi
       class Client
-        ENDPOINT_EXPORT = "https://data.mixpanel.com/api/2.0/export/".freeze
         TIMEOUT_SECONDS = 3600
         PING_TIMEOUT_SECONDS = 3
         PING_RETRY_LIMIT = 3
         PING_RETRY_WAIT = 2
         SMALLSET_BYTE_RANGE = "0-#{5 * 1024 * 1024}"
+        DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
 
         attr_reader :retryer
 
-        def self.mixpanel_available?
+        def self.mixpanel_available?(endpoint = nil)
+          endpoint ||= DEFAULT_EXPORT_ENDPOINT
           retryer = PerfectRetry.new do |config|
             config.limit = PING_RETRY_LIMIT
             config.sleep = PING_RETRY_WAIT
@@ -29,7 +30,7 @@ module Embulk
             retryer.with_retry do
               client = HTTPClient.new
               client.connect_timeout = PING_TIMEOUT_SECONDS
-              client.get("https://data.mixpanel.com")
+              client.get(URI.join(endpoint, '/'))
             end
             true
           rescue PerfectRetry::TooManyRetry
@@ -37,7 +38,8 @@ module Embulk
           end
         end
 
-        def initialize(api_key, api_secret, retryer = nil)
+        def initialize(api_key, api_secret, retryer = nil, endpoint = DEFAULT_EXPORT_ENDPOINT)
+          @endpoint = endpoint
           @api_key = api_key
           @api_secret = api_secret
           @retryer = retryer || PerfectRetry.new do |config|
@@ -102,7 +104,8 @@ module Embulk
 
           buf = ""
           error_response = ''
-          response = httpclient.get(ENDPOINT_EXPORT, params) do |response, chunk|
+          Embulk.logger.info "Sending request to #{@endpoint}"
+          response = httpclient.get(@endpoint, params) do |response, chunk|
             # Only process data if response status is 200..299
             if response.status/100 == 2
               chunk.each_line do |line|
@@ -130,10 +133,11 @@ module Embulk
           # guess/preview
           # Try to fetch first `range` bytes
           set_signatures(params)
-          res = httpclient.get(ENDPOINT_EXPORT, params, {"Range" => "bytes=#{range}"})
+          Embulk.logger.info "Sending request to #{@endpoint}"
+          res = httpclient.get(@endpoint, params, {"Range" => "bytes=#{range}"})
           if res.code == 416
             # cannot satisfied requested Range, get full body
-            res = httpclient.get(ENDPOINT_EXPORT, params)
+            res = httpclient.get(@endpoint, params)
           end
           handle_error(res,res.body)
           response_to_enum(res.body)

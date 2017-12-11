@@ -60,6 +60,7 @@ module Embulk
           params: export_params(config),
           dates: range,
           timezone: timezone,
+          export_endpoint: export_endpoint(config),
           api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
@@ -122,14 +123,16 @@ module Embulk
       end
 
       def self.guess(config)
-        giveup_when_mixpanel_is_down
+        giveup_when_mixpanel_is_down(export_endpoint(config))
 
         retryer = perfect_retry({
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         })
-
-        client = MixpanelApi::Client.new(config.param(:api_key, :string), config.param(:api_secret, :string), retryer)
+        client = MixpanelApi::Client.new(config.param(:api_key, :string),
+                                         config.param(:api_secret, :string),
+                                         retryer,
+                                         export_endpoint(config))
 
         range = guess_range(config)
         Embulk.logger.info "Guessing schema using #{range.first}..#{range.last} records"
@@ -153,7 +156,12 @@ module Embulk
         end
       end
 
+      def self.export_endpoint(config)
+        config.param(:export_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_EXPORT_ENDPOINT)
+      end
+
       def init
+        @export_endpoint = task[:export_endpoint]
         @api_key = task[:api_key]
         @api_secret = task[:api_secret]
         @params = task[:params]
@@ -167,7 +175,7 @@ module Embulk
 
       def run
         Embulk.logger.info "Job start time is #{task[:job_start_time]}"
-        self.class.giveup_when_mixpanel_is_down
+        self.class.giveup_when_mixpanel_is_down(task[:export_endpoint])
         prev_latest_fetched_time = task[:latest_fetched_time] || 0
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
         current_latest_fetched_time = prev_latest_fetched_time
@@ -227,8 +235,8 @@ module Embulk
 
       private
 
-      def self.giveup_when_mixpanel_is_down
-        unless MixpanelApi::Client.mixpanel_available?
+      def self.giveup_when_mixpanel_is_down(export_endpoint)
+        unless MixpanelApi::Client.mixpanel_available?(export_endpoint)
           raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")
         end
       end
@@ -289,7 +297,7 @@ module Embulk
           )
         end
         Embulk.logger.info "Where params is #{params["where"]}"
-        client = MixpanelApi::Client.new(@api_key, @api_secret, self.class.perfect_retry(task))
+        client = MixpanelApi::Client.new(@api_key, @api_secret, self.class.perfect_retry(task), @export_endpoint)
 
         if preview?
           client.export_for_small_dataset(params)
