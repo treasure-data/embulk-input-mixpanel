@@ -1,6 +1,7 @@
 require "prepare_embulk"
 require "override_assert_raise"
 require "embulk/input/mixpanel"
+require "active_support/core_ext/time"
 require "json"
 
 module Embulk
@@ -88,17 +89,18 @@ module Embulk
             type: "mixpanel",
             api_key: API_KEY,
             api_secret: API_SECRET,
-            from_date: (Date.today + 1).to_s,
+            timezone: TIMEZONE,
+            from_date: (today + 1).to_s
           }
 
           stub_export_all
-          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date(TIMEZONE).to_s}/)
 
           Mixpanel.guess(embulk_config(config))
         end
 
         def test_from_date_yesterday
-          from_date = (Date.today - 1).to_s
+          from_date = (today - 1).to_s
           config = {
             type: "mixpanel",
             api_key: API_KEY,
@@ -117,10 +119,11 @@ module Embulk
             type: "mixpanel",
             api_key: API_KEY,
             api_secret: API_SECRET,
+            timezone: TIMEZONE
           }
 
           stub_export_all
-          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date.to_s}/)
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date(TIMEZONE).to_s}/)
 
           Mixpanel.guess(embulk_config(config))
         end
@@ -192,7 +195,7 @@ module Embulk
         end
 
         def test_future
-          from_date = (Date.today + 10).to_s
+          from_date = (today + 10).to_s
           mock(Mixpanel).resume(anything, anything, 1)
 
           Mixpanel.transaction(transaction_config(from_date))
@@ -200,7 +203,7 @@ module Embulk
 
         def test_negative_days
           assert_raise(Embulk::ConfigError) do
-            Mixpanel.transaction(transaction_config((Date.today - 1).to_s).merge(fetch_days: -1))
+            Mixpanel.transaction(transaction_config((today - 1).to_s).merge(fetch_days: -1))
           end
         end
 
@@ -209,7 +212,7 @@ module Embulk
             assert_nil(task[:incremental_column])
             assert_true(task[:incremental])
           }
-          Mixpanel.transaction(transaction_config(Date.today))
+          Mixpanel.transaction(transaction_config(today))
         end
 
         private
@@ -259,11 +262,11 @@ module Embulk
           private
 
           def dates
-            (Date.today - 10)..(Date.today + 10)
+            (today - 10)..(today + 10)
           end
 
           def target_dates
-            dates.find_all{|d| d <= Date.today}.map {|date| date.to_s}
+            dates.find_all{|d| d <= today}.map {|date| date.to_s}
           end
 
           def transaction_config
@@ -325,9 +328,9 @@ module Embulk
 
           def test_next_to_date
             next_config_diff = Mixpanel.resume(transaction_task(1).merge(incremental: true), columns, 1) do
-              [{to_date: Date.today.to_s, latest_fetched_time: 1502707247000}]
+              [{to_date: today.to_s, latest_fetched_time: 1502707247000}]
             end
-            assert_equal(Date.today.to_s, next_config_diff[:from_date])
+            assert_equal(today.to_s, next_config_diff[:from_date])
           end
 
           def test_valid_days_with_backfill
@@ -419,7 +422,6 @@ module Embulk
         end
 
         def test_resume
-          today = Date.today
           control = proc { [{to_date: today.to_s, latest_fetched_time: 999}] }
           actual = Mixpanel.resume(transaction_task, columns, 1, &control)
           assert_equal({from_date: today.to_s, latest_fetched_time: 999}, actual)
@@ -904,6 +906,9 @@ module Embulk
 
       def embulk_config
         DataSource[*config.to_a.flatten(1)]
+      end
+      def today
+        ActiveSupport::TimeZone[TIMEZONE].today
       end
     end
   end

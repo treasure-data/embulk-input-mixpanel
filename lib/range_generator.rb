@@ -1,9 +1,12 @@
-class RangeGenerator
-  attr_reader :from_date_str, :fetch_days
+require "active_support/core_ext/time"
 
-  def initialize(from_date_str, fetch_days)
+class RangeGenerator
+  attr_reader :from_date_str, :fetch_days, :profile_time_zone
+
+  def initialize(from_date_str, fetch_days, profile_time_zone)
     @from_date_str = from_date_str
     @fetch_days = fetch_days
+    @profile_time_zone = profile_time_zone
   end
 
   def generate_range
@@ -70,6 +73,8 @@ class RangeGenerator
   end
 
   def today
-    @today ||= Date.today
+    zone = ActiveSupport::TimeZone[@profile_time_zone]
+    Embulk.logger.warn "Coudn't find timezone support for #{@profile_time_zone}" if zone.nil?
+    @today ||= (zone.nil? ? Date.today : zone.today)
   end
 end

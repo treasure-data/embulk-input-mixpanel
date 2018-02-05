@@ -1,9 +1,11 @@
 require "range_generator"
 require "override_assert_raise"
+require "active_support/core_ext/time"
 
 class RangeGeneratorTest < Test::Unit::TestCase
   include OverrideAssertRaise
-
+  DEFAULT_TIMEZONE = "America/Chicago"
+  DEFAULT_LOCAL = ActiveSupport::TimeZone["UTC"]
   class GenerateRangeTest < self
     data do
       {
@@ -25,7 +27,7 @@ class RangeGeneratorTest < Test::Unit::TestCase
 
       expected = (expected_from..expected_to).to_a.map{|date| date.to_s}
 
-      actual = RangeGenerator.new(from, days).generate_range
+      actual = RangeGenerator.new(from, days, DEFAULT_TIMEZONE).generate_range
 
       assert_equal(expected, actual)
     end
@@ -36,7 +38,7 @@ class RangeGeneratorTest < Test::Unit::TestCase
       expected_from = Date.parse(from)
       expected_to = Date.parse("2017-08-04")
       expected = (expected_from..expected_to).to_a.map {|date| date.to_s}
-      actual = RangeGenerator.new(from, days).generate_range
+      actual = RangeGenerator.new(from, days, DEFAULT_TIMEZONE).generate_range
       assert_equal(expected, actual)
     end
 
@@ -46,19 +48,20 @@ class RangeGeneratorTest < Test::Unit::TestCase
       expected_from = Date.parse(from)
       expected_to = Date.parse("2017-08-08")
       expected = (expected_from..expected_to).to_a.map {|date| date.to_s}
-      actual = RangeGenerator.new(from, days).generate_range
+      actual = RangeGenerator.new(from, days, DEFAULT_TIMEZONE).generate_range
       assert_equal(expected, actual)
     end
 
     class OverDaysTest < self
       def setup
-        @from = Date.today - 5
+        @from = today - 5
         @days = 10
         @warn_message_regexp = /ignored them/
       end
 
       def test_range_only_present
-        expected_to = Date.today
+        
+        expected_to = today
         expected = (@from..expected_to).to_a.map{|date| date.to_s}
 
         stub(Embulk.logger).warn(@warn_message_regexp)
@@ -81,7 +84,7 @@ class RangeGeneratorTest < Test::Unit::TestCase
 
     class FromDateEarlyTest < self
       def setup
-        @from = Date.today + 5
+        @from = today + 5
         @days = 10
         @warn_message_regexp = /allow 2 days/
       end
@@ -108,7 +111,10 @@ class RangeGeneratorTest < Test::Unit::TestCase
     private
 
     def generate_range(from_date_str, fetch_days)
-      RangeGenerator.new(from_date_str, fetch_days).generate_range
+      RangeGenerator.new(from_date_str, fetch_days, DEFAULT_TIMEZONE).generate_range
+    end
+    def today
+      DEFAULT_LOCAL.today
     end
   end
 end

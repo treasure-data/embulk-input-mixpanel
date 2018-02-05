@@ -4,6 +4,7 @@ require "embulk/input/mixpanel_api/client"
 require "embulk/input/mixpanel_api/exceptions"
 require "range_generator"
 require "timezone_validator"
+require "active_support/core_ext/time"
 
 module Embulk
   module Input
@@ -33,7 +34,7 @@ module Embulk
         timezone = config.param(:timezone, :string)
         TimezoneValidator.new(timezone).validate
 
-        from_date = config.param(:from_date, :string, default: (Date.today - 2).to_s)
+        from_date = config.param(:from_date, :string, default: (today(timezone) - 2).to_s)
         fetch_days = config.param(:fetch_days, :integer, default: nil)
 
 
@@ -51,7 +52,7 @@ module Embulk
           fetch_days = fetch_days.nil? ? nil : fetch_days + back_fill_days
         end
 
-        range = RangeGenerator.new(from_date, fetch_days).generate_range
+        range = RangeGenerator.new(from_date, fetch_days, timezone).generate_range
         Embulk.logger.info "Try to fetch data from #{range.first} to #{range.last}"
         job_start_time = Time.now.to_i*1000
         upper_limit_delay = config.param(:incremental_column_upper_limit_delay_in_seconds, :integer, default: 0)
@@ -228,7 +229,7 @@ module Embulk
         page_builder.finish
         task_report = {
           latest_fetched_time: current_latest_fetched_time,
-          to_date: @dates.last || Date.today - 1,
+          to_date: @dates.last || today(@timezone) - 1,
         }
         task_report
       end
@@ -338,16 +339,17 @@ module Embulk
         }
       end
 
-      def self.default_guess_start_date
-        Date.today - DEFAULT_FETCH_DAYS - 1
+      def self.default_guess_start_date(timezone)
+        today(timezone) - DEFAULT_FETCH_DAYS - 1
       end
 
       def self.guess_range(config)
-        from_date = config.param(:from_date, :string, default: default_guess_start_date.to_s)
+        time_zone = config.param(:timezone, :string, default: "")
+        from_date = config.param(:from_date, :string, default: default_guess_start_date(time_zone).to_s)
         fetch_days = config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
-        range = RangeGenerator.new(from_date, fetch_days).generate_range
+        range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
         if range.empty?
-          return default_guess_start_date..(Date.today - 1)
+          return default_guess_start_date(time_zone)..(today(time_zone) - 1)
         end
         range
       end
@@ -368,7 +370,16 @@ module Embulk
         # Shift incremental column to top
         columns.unshift(name: "time", type: :long)
       end
-    end
 
+      def self.today(timezone)
+        if timezone.nil?
+          Date.today
+        else
+          zone = ActiveSupport::TimeZone[timezone]
+          zone.nil? ? Date.today : zone.today
+        end
+      end
+
+    end
   end
 end
