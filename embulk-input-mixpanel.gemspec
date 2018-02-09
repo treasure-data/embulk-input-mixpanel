@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "embulk-input-mixpanel"
-  spec.version       = "0.5.11"
+  spec.version       = "0.5.12"
   spec.authors       = ["yoshihara", "uu59"]
   spec.summary       = "Mixpanel input plugin for Embulk"
   spec.description   = "Loads records from Mixpanel."
