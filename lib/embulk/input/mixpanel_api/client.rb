@@ -12,7 +12,7 @@ module Embulk
         PING_TIMEOUT_SECONDS = 3
         PING_RETRY_LIMIT = 3
         PING_RETRY_WAIT = 2
-        SMALLSET_BYTE_RANGE = "0-#{5 * 1024 * 1024}"
+        SMALL_NUM_OF_RECORDS = 10
         DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
 
         attr_reader :retryer
@@ -66,7 +66,7 @@ module Embulk
             latest_tried_to_date = to_date
             params["to_date"] = to_date.strftime("%Y-%m-%d")
             records = retryer.with_retry do
-              request_small_dataset(params, SMALLSET_BYTE_RANGE)
+              request_small_dataset(params, SMALL_NUM_OF_RECORDS)
             end
             next if records.first.nil?
             return records
@@ -129,16 +129,13 @@ module Embulk
           end
         end
 
-        def request_small_dataset(params, range)
+        def request_small_dataset(params, num_of_records)
           # guess/preview
-          # Try to fetch first `range` bytes
+          # Try to fetch first number of records
+          params["limit"] = num_of_records
           set_signatures(params)
           Embulk.logger.info "Sending request to #{@endpoint}"
-          res = httpclient.get(@endpoint, params, {"Range" => "bytes=#{range}"})
-          if res.code == 416
-            # cannot satisfied requested Range, get full body
-            res = httpclient.get(@endpoint, params)
-          end
+          res = httpclient.get(@endpoint, params)
           handle_error(res,res.body)
           response_to_enum(res.body)
         end
