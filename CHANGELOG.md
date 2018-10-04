@@ -1,3 +1,7 @@
+## 0.5.13 - 2018-10-04
+
+* [enhancement] Limit number of returned records in guess and preview [#60](https://github.com/treasure-data/embulk-input-mixpanel/pull/60)
+
 ## 0.5.12 - 2017-02-09
 
 * [bug] Fix incorrect from_date [#59](https://github.com/treasure-data/embulk-input-mixpanel/pull/59)
