@@ -145,7 +145,7 @@ module Embulk
           class ExportSmallDataset < self
             def test_to_date_after_1_day
               to = (Date.parse(params["from_date"]) + 1).to_s
-              mock(@client).request_small_dataset(params.merge("to_date" => to), Client::SMALLSET_BYTE_RANGE) { [:foo] }
+              mock(@client).request_small_dataset(params.merge("to_date" => to), Client::SMALL_NUM_OF_RECORDS) { [:foo] }
 
               @client.export_for_small_dataset(params)
             end
@@ -163,8 +163,8 @@ module Embulk
               stub_client
               to1 = (Date.parse(params["from_date"]) + 1).to_s
               to2 = (Date.parse(params["from_date"]) + 10).to_s
-              mock(@client).request_small_dataset(params.merge("to_date" => to1), Client::SMALLSET_BYTE_RANGE) { [] }
-              mock(@client).request_small_dataset(params.merge("to_date" => to2), Client::SMALLSET_BYTE_RANGE) { [:foo] }
+              mock(@client).request_small_dataset(params.merge("to_date" => to1), Client::SMALL_NUM_OF_RECORDS) { [] }
+              mock(@client).request_small_dataset(params.merge("to_date" => to2), Client::SMALL_NUM_OF_RECORDS) { [:foo] }
 
               @client.export_for_small_dataset(params)
             end

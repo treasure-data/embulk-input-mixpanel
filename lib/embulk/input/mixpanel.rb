@@ -11,7 +11,6 @@ module Embulk
     class Mixpanel < InputPlugin
       Plugin.register_input("mixpanel", self)
 
-      GUESS_RECORDS_COUNT = 10
       NOT_PROPERTY_COLUMN = "event".freeze
 
       # https://mixpanel.com/help/questions/articles/special-or-reserved-properties
@@ -355,7 +354,7 @@ module Embulk
       end
 
       def self.guess_from_records(records)
-        sample_props = records.first(GUESS_RECORDS_COUNT).map {|r| r["properties"]}
+        sample_props = records.map {|r| r["properties"]}
         schema = Guess::SchemaGuess.from_hash_records(sample_props)
         columns = schema.map do |col|
           next if col.name == "time"
