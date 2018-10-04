@@ -5,7 +5,7 @@ require "active_support/core_ext/time"
 class RangeGeneratorTest < Test::Unit::TestCase
   include OverrideAssertRaise
   DEFAULT_TIMEZONE = "America/Chicago"
-  DEFAULT_LOCAL = ActiveSupport::TimeZone["UTC"]
+  DEFAULT_LOCAL = ActiveSupport::TimeZone["America/Chicago"]
   class GenerateRangeTest < self
     data do
       {
