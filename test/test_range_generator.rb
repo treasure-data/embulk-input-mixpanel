@@ -5,7 +5,6 @@ require "active_support/core_ext/time"
 class RangeGeneratorTest < Test::Unit::TestCase
   include OverrideAssertRaise
   DEFAULT_TIMEZONE = "America/Chicago"
-  DEFAULT_LOCAL = ActiveSupport::TimeZone["America/Chicago"]
   class GenerateRangeTest < self
     data do
       {
@@ -114,7 +113,7 @@ class RangeGeneratorTest < Test::Unit::TestCase
       RangeGenerator.new(from_date_str, fetch_days, DEFAULT_TIMEZONE).generate_range
     end
     def today
-      DEFAULT_LOCAL.today
+      ActiveSupport::TimeZone[DEFAULT_TIMEZONE].today
     end
   end
 end
