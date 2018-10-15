@@ -1,4 +1,3 @@
-require "tzinfo"
 require "perfect_retry"
 require "embulk/input/mixpanel_api/client"
 require "embulk/input/mixpanel_api/exceptions"
@@ -313,8 +312,7 @@ module Embulk
       def adjust_timezone(epoch)
         # Adjust timezone offset to get UTC time
         # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
-        tz = TZInfo::Timezone.get(@timezone)
-        offset = tz.period_for_local(epoch, true).offset.utc_offset
+        offset = Time.at(epoch).in_time_zone(@timezone).utc_offset
         epoch - offset
       end
 
