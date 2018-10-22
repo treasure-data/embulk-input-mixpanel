@@ -180,7 +180,13 @@ module Embulk
         prev_latest_fetched_time_format = Time.at(prev_latest_fetched_time).strftime("%F %T %z")
         current_latest_fetched_time = prev_latest_fetched_time
         @dates.each_slice(task[:slice_range]) do |slice_dates|
-          ignored_record_count = 0
+          ignored_fetched_record_count = 0
+          # There is the issue with Mixpanel time field during the transition from standard to daylight saving time
+          # in the US timezone i.e. 11 Mar 2018 2AM - 2:59AM, time within that period must not be existed,
+          # due to daylight saving, time will be forwarded 1 hour from 2AM to 3AM.
+          #
+          # All of records with wrong timezone will be ignored instead of throw exception out
+          ignored_wrong_daylight_tz_record_count = 0
           unless preview?
             Embulk.logger.info "Fetching data from #{slice_dates.first} to #{slice_dates.last} ..."
           end
@@ -194,7 +200,7 @@ module Embulk
                 record_time = record["properties"][record_time_column]
                 if @incremental_column.nil?
                   if record_time <= prev_latest_fetched_time
-                    ignored_record_count += 1
+                    ignored_fetched_record_count += 1
                     next
                   end
                 end
@@ -204,15 +210,19 @@ module Embulk
                   record_time,
                 ].max
               end
-              values = extract_values(record)
-              if @fetch_unknown_columns
-                unknown_values = extract_unknown_values(record)
-                values << unknown_values.to_json
+              begin
+                values = extract_values(record)
+                if @fetch_unknown_columns
+                  unknown_values = extract_unknown_values(record)
+                  values << unknown_values.to_json
+                end
+                if task[:fetch_custom_properties]
+                  values << collect_custom_properties(record)
+                end
+                page_builder.add(values)
+              rescue TZInfo::PeriodNotFound
+                ignored_wrong_daylight_tz_record_count += 1
               end
-              if task[:fetch_custom_properties]
-                values << collect_custom_properties(record)
-              end
-              page_builder.add(values)
             end
           rescue MixpanelApi::IncompleteExportResponseError
             if !task[:allow_partial_import]
@@ -220,8 +230,11 @@ module Embulk
               raise
             end
           end
-          if ignored_record_count > 0
-            Embulk.logger.warn "Skipped already loaded #{ignored_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."
+          if ignored_fetched_record_count > 0
+            Embulk.logger.warn "Skipped already loaded #{ignored_fetched_record_count} records. These record times are older or equal than previous fetched record time (#{prev_latest_fetched_time} @ #{prev_latest_fetched_time_format})."
+          end
+          if ignored_wrong_daylight_tz_record_count > 0
+            Embulk.logger.warn "Skipped #{ignored_wrong_daylight_tz_record_count} records due to corrupted Mixpanel time transition from standard to daylight saving"
           end
           break if preview?
         end
@@ -314,7 +327,7 @@ module Embulk
         # Adjust timezone offset to get UTC time
         # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
         tz = TZInfo::Timezone.get(@timezone)
-        offset = tz.period_for_local(epoch, true).offset.utc_offset
+        offset = tz.period_for_local(epoch, true).offset.utc_total_offset
         epoch - offset
       end
 

@@ -798,7 +798,7 @@ module Embulk
 
             time = properties["time"]
             tz = TZInfo::Timezone.get(TIMEZONE)
-            offset = tz.period_for_local(time, true).offset.utc_offset
+            offset = tz.period_for_local(time, true).offset.utc_total_offset
             adjusted_time = time - offset
 
             added = [
