@@ -1,3 +1,7 @@
+## 0.5.14 - 2018-10-22
+
+* [enhancement] Handle the wrong period during transition from standard to daylight saving time exception [#62](https://github.com/treasure-data/embulk-input-mixpanel/pull/62)
+
 ## 0.5.13 - 2018-10-04
 
 * [enhancement] Limit number of returned records in guess and preview [#60](https://github.com/treasure-data/embulk-input-mixpanel/pull/60)
