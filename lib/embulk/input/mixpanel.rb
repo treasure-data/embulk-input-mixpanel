@@ -61,7 +61,6 @@ module Embulk
           dates: range,
           timezone: timezone,
           export_endpoint: export_endpoint(config),
-          api_key: config.param(:api_key, :string),
           api_secret: config.param(:api_secret, :string),
           schema: config.param(:columns, :array),
           fetch_unknown_columns: fetch_unknown_columns,
@@ -129,8 +128,7 @@ module Embulk
           retry_initial_wait_sec: config.param(:retry_initial_wait_sec, :integer, default: 1),
           retry_limit: config.param(:retry_limit, :integer, default: 5),
         })
-        client = MixpanelApi::Client.new(config.param(:api_key, :string),
-                                         config.param(:api_secret, :string),
+        client = MixpanelApi::Client.new(config.param(:api_secret, :string),
                                          retryer,
                                          export_endpoint(config))
 
@@ -162,7 +160,6 @@ module Embulk
 
       def init
         @export_endpoint = task[:export_endpoint]
-        @api_key = task[:api_key]
         @api_secret = task[:api_secret]
         @params = task[:params]
         @timezone = task[:timezone]
@@ -310,7 +307,7 @@ module Embulk
           )
         end
         Embulk.logger.info "Where params is #{params["where"]}"
-        client = MixpanelApi::Client.new(@api_key, @api_secret, self.class.perfect_retry(task), @export_endpoint)
+        client = MixpanelApi::Client.new(@api_secret, self.class.perfect_retry(task), @export_endpoint)
 
         if preview?
           client.export_for_small_dataset(params)
@@ -342,9 +339,7 @@ module Embulk
       def self.export_params(config)
         event = config.param(:event, :array, default: nil)
         event = event.nil? ? nil : event.to_json
-
         {
-          api_key: config.param(:api_key, :string),
           event: event,
           where: config.param(:where, :string, default: nil),
           bucket: config.param(:bucket, :string, default: nil),

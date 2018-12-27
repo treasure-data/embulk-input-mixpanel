@@ -9,7 +9,6 @@ module Embulk
     class MixpanelTest < Test::Unit::TestCase
       include OverrideAssertRaise
 
-      API_KEY = "api_key".freeze
       API_SECRET = "api_secret".freeze
       FROM_DATE = "2015-02-22".freeze
       TO_DATE = "2015-03-02".freeze
@@ -31,7 +30,6 @@ module Embulk
 
       def setup_client
         params = {
-          api_key: API_KEY,
           event: nil,
           where: nil,
           bucket: nil,
@@ -72,7 +70,6 @@ module Embulk
         def test_from_date_old_date
           config = {
             type: "mixpanel",
-            api_key: API_KEY,
             api_secret: API_SECRET,
             from_date: FROM_DATE,
           }
@@ -87,7 +84,6 @@ module Embulk
         def test_from_date_future
           config = {
             type: "mixpanel",
-            api_key: API_KEY,
             api_secret: API_SECRET,
             timezone: TIMEZONE,
             from_date: (today + 1).to_s
@@ -103,7 +99,6 @@ module Embulk
           from_date = (today - 1).to_s
           config = {
             type: "mixpanel",
-            api_key: API_KEY,
             api_secret: API_SECRET,
             from_date: from_date,
           }
@@ -117,7 +112,6 @@ module Embulk
         def test_no_from_date
           config = {
             type: "mixpanel",
-            api_key: API_KEY,
             api_secret: API_SECRET,
             timezone: TIMEZONE
           }
@@ -141,7 +135,6 @@ module Embulk
           stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
           config = {
             type: "mixpanel",
-            api_key: API_KEY,
             api_secret: API_SECRET,
           }
 
@@ -300,7 +293,6 @@ module Embulk
           def transaction_task(timezone)
             task.merge(
               dates: DATES.map {|date| date.to_s},
-              api_key: API_KEY,
               api_secret: API_SECRET,
               incremental: true,
               incremental_column: nil,
@@ -366,7 +358,6 @@ module Embulk
             from_date = Date.parse(FROM_DATE)
             task.merge(
               dates: (from_date..(from_date + days - 1)).map {|date| date.to_s},
-              api_key: API_KEY,
               api_secret: API_SECRET,
               timezone: TIMEZONE,
               schema: schema
@@ -434,7 +425,6 @@ module Embulk
         def transaction_task
           task.merge(
             dates: DATES.map {|date| date.to_s},
-            api_key: API_KEY,
             api_secret: API_SECRET,
             timezone: TIMEZONE,
             schema: schema
@@ -451,7 +441,6 @@ module Embulk
       def test_export_params
         config_params = [
           :type, "mixpanel",
-          :api_key, API_KEY,
           :api_secret, API_SECRET,
           :from_date, FROM_DATE,
           :to_date, TO_DATE,
@@ -463,7 +452,6 @@ module Embulk
         config = DataSource[*config_params]
 
         expected = {
-          api_key: API_KEY,
           event: "[\"ViewHoge\",\"ViewFuga\"]",
           where: 'properties["$os"] == "Windows"',
           bucket: "987",
@@ -541,7 +529,6 @@ module Embulk
 
         def task
           {
-            api_key: API_KEY,
             api_secret: API_SECRET,
             export_endpoint: "https://data.mixpanel.com/api/2.0/export/",
             timezone: TIMEZONE,
@@ -846,7 +833,6 @@ module Embulk
 
       def task
         {
-          api_key: API_KEY,
           api_secret: API_SECRET,
           export_endpoint: "https://data.mixpanel.com/api/2.0/export/",
           timezone: TIMEZONE,
@@ -891,7 +877,6 @@ module Embulk
       def config
         {
           type: "mixpanel",
-          api_key: API_KEY,
           api_secret: API_SECRET,
           from_date: FROM_DATE,
           fetch_days: DAYS,

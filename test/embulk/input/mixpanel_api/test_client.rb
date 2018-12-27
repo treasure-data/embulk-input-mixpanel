@@ -8,39 +8,23 @@ module Embulk
       class ClientTest < Test::Unit::TestCase
         include OverrideAssertRaise
 
-        API_KEY = "api_key".freeze
         API_SECRET = "api_secret".freeze
 
         def setup
-          @client = Client.new(API_KEY, API_SECRET)
+          @client = Client.new(API_SECRET)
           stub(Embulk).logger { ::Logger.new(IO::NULL) }
-        end
-
-        # NOTE: Client#signature is private method but this value
-        # can't be checked via other methods.
-        def test_signature
-          now = Time.parse("2015-07-22 00:00:00")
-          stub(Time).now { now }
-
-          params = {
-            string: "string",
-            array: ["elem1", "elem2"],
-          }
-          expected = "4be4a4f92f57e12b543a2a5f2f5897b6"
-
-          assert_equal(expected, @client.__send__(:signature, params))
         end
 
         class TestKeepAlive < self
           def test_tcp_keepalive_enabled
-            client = Client.new(API_KEY, API_SECRET)
+            client = Client.new(API_SECRET)
             assert client.send(:httpclient).tcp_keepalive
           end
         end
 
         class TryToDatesTest < self
           def setup
-            @client = Client.new(API_KEY, API_SECRET)
+            @client = Client.new(API_SECRET)
           end
 
           data do
@@ -77,7 +61,7 @@ module Embulk
 
           def test_success
             stub_client
-            stub(@client).set_signatures(anything) {}
+            # stub(@client).set_signatures(anything) {}
             stub_response(success_response)
 
             records = []
@@ -90,7 +74,7 @@ module Embulk
 
           def test_export_partial_with_export_terminated_early
             stub_client
-            stub(@client).set_signatures(anything) {}
+            # stub(@client).set_signatures(anything) {}
             stub_response(Struct.new(:code, :body).new(200, jsonl_dummy_responses+"\nexport terminated early"))
 
             records = []
@@ -104,7 +88,7 @@ module Embulk
 
           def test_export_partial_with_error_json
             stub_client
-            stub(@client).set_signatures(anything) {}
+            # stub(@client).set_signatures(anything) {}
             stub_response(Struct.new(:code, :body).new(200, jsonl_dummy_responses+"\n{\"error\":"))
             records = []
             assert_raise MixpanelApi::IncompleteExportResponseError do
@@ -203,7 +187,6 @@ module Embulk
 
           def params
             {
-              "api_key" => API_KEY,
               "api_secret" => API_SECRET,
               "from_date" => "2015-01-01",
               "to_date" => "2015-03-02",
