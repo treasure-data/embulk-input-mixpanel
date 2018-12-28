@@ -27,14 +27,9 @@ module Embulk
             @client = Client.new(API_SECRET)
           end
 
-          data do
-            [
-              ["2000-01-01", "2000-01-01"],
-              ["2010-01-01", "2010-01-01"],
-              ["3 days ago", (Date.today - 3).to_s],
-            ]
-          end
-          def test_candidates(from_str)
+
+          def test_candidates_case1
+            from_str = "2000-01-01"
             from = Date.parse(from_str)
             yesterday = Date.today - 1
             dates = @client.try_to_dates(from.to_s)
@@ -45,6 +40,24 @@ module Embulk
               from + 1000,
               from + 10000,
               yesterday,
+            ].find_all{|d| d <= yesterday}
+
+            assert_equal expect, dates
+            assert dates.all?{|d| d <= yesterday}
+          end
+
+          def test_candidates_case2
+            from_str = (Date.today - 3).to_s
+            from = Date.parse(from_str)
+            yesterday = Date.today - 1
+            dates = @client.try_to_dates(from.to_s)
+            expect = [
+                from + 1,
+                from + 10,
+                from + 100,
+                from + 1000,
+                from + 10000,
+                yesterday,
             ].find_all{|d| d <= yesterday}
 
             assert_equal expect, dates
