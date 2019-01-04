@@ -29,7 +29,9 @@ module Embulk
           begin
             retryer.with_retry do
               client = HTTPClient.new
+              client.force_basic_auth = true
               client.connect_timeout = PING_TIMEOUT_SECONDS
+              client.set_auth(nil, @api_secret, nil)
               client.get(URI.join(endpoint, '/'))
             end
             true
@@ -38,9 +40,8 @@ module Embulk
           end
         end
 
-        def initialize(api_key, api_secret, retryer = nil, endpoint = DEFAULT_EXPORT_ENDPOINT)
+        def initialize(api_secret, retryer = nil, endpoint = DEFAULT_EXPORT_ENDPOINT)
           @endpoint = endpoint
-          @api_key = api_key
           @api_secret = api_secret
           @retryer = retryer || PerfectRetry.new do |config|
             # for test
@@ -100,7 +101,6 @@ module Embulk
         def request(params, &block)
           # https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel
           Embulk.logger.debug "Export param: #{params.to_s}"
-          set_signatures(params)
 
           buf = ""
           error_response = ''
@@ -133,7 +133,6 @@ module Embulk
           # guess/preview
           # Try to fetch first number of records
           params["limit"] = num_of_records
-          set_signatures(params)
           Embulk.logger.info "Sending request to #{@endpoint}"
           res = httpclient.get(@endpoint, params)
           handle_error(res,res.body)
@@ -154,25 +153,6 @@ module Embulk
           end
         end
 
-        def set_signatures(params)
-          params[:expire] ||= Time.now.to_i + TIMEOUT_SECONDS
-          params[:sig] = signature(params)
-          params
-        end
-
-        def signature(params)
-          # https://mixpanel.com/docs/api-documentation/data-export-api#auth-implementation
-          params.delete(:sig)
-          sorted_keys = params.keys.map(&:to_s).sort
-          signature = sorted_keys.inject("") do |sig, key|
-            value = params[key] || params[key.to_sym]
-            next sig unless value
-            sig << "#{key}=#{value}"
-          end
-
-          Digest::MD5.hexdigest(signature + @api_secret)
-        end
-
         def httpclient
           @client ||=
             begin
@@ -181,6 +161,8 @@ module Embulk
               client.tcp_keepalive = true
               client.default_header = {Accept: "application/json; charset=UTF-8"}
               # client.debug_dev = STDERR
+              client.force_basic_auth = true
+              client.set_auth(nil, @api_secret, nil);
               client
             end
         end
