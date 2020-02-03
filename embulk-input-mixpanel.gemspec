@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "embulk-input-mixpanel"
-  spec.version       = "0.5.14"
+  spec.version       = "0.5.15"
   spec.authors       = ["yoshihara", "uu59"]
   spec.summary       = "Mixpanel input plugin for Embulk"
   spec.description   = "Loads records from Mixpanel."
@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency 'httpclient', '>= 2.8.3' # To use tcp_keepalive
-  spec.add_dependency 'tzinfo'
+  spec.add_dependency 'tzinfo', '1.2.5'
   spec.add_dependency 'perfect_retry', ["~> 0.5"]
   spec.add_dependency 'activesupport'
   spec.add_development_dependency 'bundler', ['~> 1.0']

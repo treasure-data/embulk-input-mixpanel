@@ -1,6 +1,9 @@
 language: ruby
 
-jdk: oraclejdk8
+dist: trusty
+
+jdk: openjdk8
+
 sudo: false
 
 addons:
@@ -15,9 +18,9 @@ before_install:
     ruby -v
     rvm get head
     rvm use jruby-9.0.5.0 --install
-    gem install bundler
+    gem install bundler -v '< 2'
     ruby -v
-  - gem i bundler
+  - gem install bundler -v '< 2'
 
 rvm:
   - jruby-9.0.5.0

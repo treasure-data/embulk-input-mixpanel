@@ -31,7 +31,6 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 
 ### Configuration
 
-- **api_key**: project API Key (string, required)
 - **api_secret**: project API Secret (string, required)
 - **export_endpoint**: the Data Export API's endpoint (string, default to "http://data.mixpanel.com/api/2.0/export")
 - **timezone**: project timezone(string, required)
@@ -69,7 +68,6 @@ If you have such data and set config.yml as below.
 ```yaml
 in:
   type: mixpanel
-  api_key: "API_KEY"
   api_secret: "API_SECRET"
   timezone: "US/Pacific"
   from_date: "2015-07-19"
@@ -102,7 +100,6 @@ in:
 ```yaml
 in:
   type: mixpanel
-  api_key: "API_KEY"
   api_secret: "API_SECRET"
   timezone: "US/Pacific"
   from_date: "2015-07-19"
