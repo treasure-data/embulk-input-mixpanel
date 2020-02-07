@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency 'httpclient', '>= 2.8.3' # To use tcp_keepalive
-  spec.add_dependency 'tzinfo', '1.2.5'
+  spec.add_dependency 'tzinfo', '1.2.5' # to avoid failure in when upgrade to 1.2.6 https://github.com/tzinfo/tzinfo/issues/114
   spec.add_dependency 'perfect_retry', ["~> 0.5"]
   spec.add_dependency 'activesupport'
   spec.add_development_dependency 'bundler', ['~> 1.0']
