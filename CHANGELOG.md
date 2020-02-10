@@ -1,3 +1,7 @@
+## 0.5.15 - 2020-01-22
+
+* [enhancement] Update the authentication method to latest [#63](https://github.com/treasure-data/embulk-input-mixpanel/pull/63)
+
 ## 0.5.14 - 2018-10-22
 
 * [enhancement] Handle the wrong period during transition from standard to daylight saving time exception [#62](https://github.com/treasure-data/embulk-input-mixpanel/pull/62)
