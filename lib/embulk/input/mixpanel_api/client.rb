@@ -14,6 +14,7 @@ module Embulk
         PING_RETRY_WAIT = 2
         SMALL_NUM_OF_RECORDS = 10
         DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
+        DEFAULT_JQL_ENDPOINT = "https://mixpanel.com/api/2.0/jql/".freeze
 
         attr_reader :retryer
 
@@ -56,6 +57,27 @@ module Embulk
         def export(params = {}, &block)
           retryer.with_retry do
             request(params, &block)
+          end
+        end
+
+        def send_jql_script_small_dataset(params = {}, &block)
+          retryer.with_retry do
+            data = request_jql(params)
+            count = 0
+            data.each do |record|
+              break if (count == SMALL_NUM_OF_RECORDS)
+              count = count + 1
+              block.call record
+            end
+          end
+        end
+
+        def send_jql(params = {}, &block)
+          retryer.with_retry do
+            data = request_jql(params)
+            data.each do |record|
+              block.call record
+            end
           end
         end
 
@@ -127,6 +149,25 @@ module Embulk
             Embulk.logger.error "Received incomplete data from Mixpanel, #{buf}"
             raise MixpanelApi::IncompleteExportResponseError.new("Incomplete data received")
           end
+        end
+
+        def request_jql(parameters)
+          Embulk.logger.info "Sending request to #{@endpoint}"
+          response = httpclient.post(@endpoint, query_string(parameters))
+          handle_error(response, response.body)
+
+          begin
+            JSON.parse(response.body)
+          rescue => e
+            raise Embulk::DataError.new(e)
+          end
+        end
+
+        def query_string(prs)
+          URI.encode_www_form({
+            params: JSON.generate(prs[:params]),
+            script: prs[:script]
+          })
         end
 
         def request_small_dataset(params, num_of_records)
