@@ -10,9 +10,6 @@ module Embulk
           jql_script = @config.param(:jql_script, :string, default: nil)
 
           validate_jql_script(jql_script)
-          validate_incremental_time_required(@config.param(:incremental, :bool, default: true),
-            @config.param(:from_date, :string, default: default_guess_start_date(@config.param(:timezone, :string, default: "")).to_s),
-            @config.param(:fetch_days, :integer, default: 0))
         end
 
         def create_task
@@ -110,15 +107,6 @@ module Embulk
           end
         end
 
-        def validate_incremental_time_required(incremental, from_date, fetch_days)
-          if incremental && fetch_days <= 0
-            raise Embulk::ConfigError.new("fetch_days is required and larger than 0 for incremental")
-          end
-          if incremental && !from_date.present?
-            raise Embulk::ConfigError.new("from_date is required for incremental")
-          end
-        end
-
         def validate_jql_script(jql_script)
           if jql_script.blank?
             raise Embulk::ConfigError.new("JQL script shouldn't be empty or null")
@@ -138,6 +126,14 @@ module Embulk
           else
             record[name]
           end
+        end
+
+        def range
+          timezone = @config.param(:timezone, :string, default: "")
+          from_date = @config.param(:from_date, :string, default: (today(timezone) - 2).to_s)
+          fetch_days = @config.param(:fetch_days, :integer, default: nil)
+
+          RangeGenerator.new(from_date, fetch_days, timezone).generate_range
         end
       end
     end

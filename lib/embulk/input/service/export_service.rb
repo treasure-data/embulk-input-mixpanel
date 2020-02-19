@@ -263,6 +263,25 @@ module Embulk
             result
           end
         end
+
+        def range
+          timezone = @config.param(:timezone, :string, default: "")
+          from_date = @config.param(:from_date, :string, default: (today(timezone) - 2).to_s)
+          incremental = @config.param(:incremental, :bool, default: true)
+          incremental_column = @config.param(:incremental_column, :string, default: nil)
+          latest_fetched_time =  @config.param(:latest_fetched_time, :integer, default: 0)
+          fetch_days = @config.param(:fetch_days, :integer, default: nil)
+
+          # Backfill from date if incremental and an incremental field is set and we are in incremental run
+          if incremental && incremental_column && latest_fetched_time !=0
+            back_fill_days = config.param(:back_fill_days, :integer, default: 5)
+            Embulk.logger.info "Backfill days #{back_fill_days}"
+            from_date = (Date.parse(from_date) - back_fill_days).to_s
+            fetch_days = fetch_days.nil? ? nil : fetch_days + back_fill_days
+          end
+
+          RangeGenerator.new(from_date, fetch_days, timezone).generate_range
+        end
       end
     end
   end
