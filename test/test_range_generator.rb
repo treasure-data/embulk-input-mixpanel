@@ -59,7 +59,7 @@ class RangeGeneratorTest < Test::Unit::TestCase
       end
 
       def test_range_only_present
-        
+
         expected_to = today
         expected = (@from..expected_to).to_a.map{|date| date.to_s}
 

@@ -1,5 +1,5 @@
 require 'embulk/input/service/base_service'
-require 'pry'
+
 module Embulk
   module Input
     module Service
@@ -35,16 +35,12 @@ module Embulk
         end
 
         def guess_columns
-          sample_records = []
           range = guess_range
-          giveup_when_mixpanel_is_down
+          # giveup_when_mixpanel_is_down
           Embulk.logger.info "Guessing schema using #{range.first}..#{range.last}"
           client = create_client
 
-          client.send_jql_script_small_dataset(parameters(range.first, range.last, @config.param(:jql_script, :string, nil))) do |record|
-            sample_records << record
-          end
-
+          sample_records = client.send_jql_script_small_dataset(parameters(range.first, range.last, @config.param(:jql_script, :string, nil)))
           guess_from_records(sample_records)
         end
 
@@ -57,18 +53,44 @@ module Embulk
           client = create_client
 
           if preview?
-            client.send_jql_script_small_dataset(parameters(@dates.first, @dates.last, task[:jql_script])) do |record|
+            sample_records = client.send_jql_script_small_dataset(parameters(@dates.first, @dates.last, task[:jql_script]))
+            sample_records.each do |record|
               values = extract_values(record)
               page_builder.add(values)
             end
           else
-            client.send_jql(parameters(@dates.first, @dates.last, task[:jql_script])) do |record|
+            client.send_jql_script(parameters(@dates.first, @dates.last, task[:jql_script])) do |record|
               values = extract_values(record)
               page_builder.add(values)
             end
           end
           page_builder.finish
           create_task_report
+        end
+
+        def guess_from_records(sample_props)
+          begin
+            schema = Guess::SchemaGuess.from_hash_records(sample_props)
+            schema.map do |col|
+              result = {
+                name: col.name,
+                type: col.type,
+              }
+              if (col.name.eql? "time") || (col.eql? "last_seen")
+                result[:format] = col.format if col.format
+              end
+              result
+            end
+          rescue DataError
+            raise Embulk::ConfigError.new("Non-supported result #{sample_props}. Revise your JQL.")
+          end
+        end
+
+        def parameters(from_date, to_date, script)
+          {
+            params: params(from_date, to_date),
+            script: script
+          }
         end
 
         private
@@ -79,32 +101,11 @@ module Embulk
           }
         end
 
-        def parameters(from_date, to_date, script)
-          {
-            params: params(from_date, to_date),
-            script: script
-          }
-        end
-
         def params(from_date, to_date)
           {
             from_date: from_date,
             to_date: to_date
           }
-        end
-
-        def guess_from_records(sample_props)
-          schema = Guess::SchemaGuess.from_hash_records(sample_props)
-          schema.map do |col|
-            result = {
-              name: col.name,
-              type: col.type,
-            }
-            if (col.name.eql? "time") || (col.eql? "last_seen")
-              result[:format] = col.format if col.format
-            end
-            result
-          end
         end
 
         def validate_jql_script(jql_script)
@@ -118,10 +119,10 @@ module Embulk
           when NOT_PROPERTY_COLUMN
             record[NOT_PROPERTY_COLUMN]
           when "time"
-            time = record["time"]
+            time = record[:time]
             adjust_timezone(time)
           when "last_seen"
-            last_seen = record["last_seen"]
+            last_seen = record[:last_seen]
             adjust_timezone(last_seen)
           else
             record[name]

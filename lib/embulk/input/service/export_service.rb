@@ -164,8 +164,6 @@ module Embulk
           guess_from_records(client.export_for_small_dataset(params))
         end
 
-        private
-
         def export_params
           event = @config.param(:event, :array, default: nil)
           event = event.nil? ? nil : event.to_json
@@ -174,12 +172,6 @@ module Embulk
             where: @config.param(:where, :string, default: nil),
             bucket: @config.param(:bucket, :string, default: nil),
           }
-        end
-
-        def incremental_column_upper_limit
-          job_start_time = Time.now.to_i * 1000
-          upper_limit_delay = @config.param(:incremental_column_upper_limit_delay_in_seconds, :integer, default: 0)
-          job_start_time - (upper_limit_delay * 1000)
         end
 
         def guess_from_records(records)
@@ -225,6 +217,14 @@ module Embulk
               end
             end
           end
+        end
+
+        private
+
+        def incremental_column_upper_limit
+          job_start_time = Time.now.to_i * 1000
+          upper_limit_delay = @config.param(:incremental_column_upper_limit_delay_in_seconds, :integer, default: 0)
+          job_start_time - (upper_limit_delay * 1000)
         end
 
         def extract_value(record, name)
@@ -274,7 +274,7 @@ module Embulk
 
           # Backfill from date if incremental and an incremental field is set and we are in incremental run
           if incremental && incremental_column && latest_fetched_time !=0
-            back_fill_days = config.param(:back_fill_days, :integer, default: 5)
+            back_fill_days = @config.param(:back_fill_days, :integer, default: 5)
             Embulk.logger.info "Backfill days #{back_fill_days}"
             from_date = (Date.parse(from_date) - back_fill_days).to_s
             fetch_days = fetch_days.nil? ? nil : fetch_days + back_fill_days

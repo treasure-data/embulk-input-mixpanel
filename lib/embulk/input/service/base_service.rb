@@ -19,6 +19,10 @@ module Embulk
           @config = config
         end
 
+        def default_guess_start_date(timezone)
+          today(timezone) - DEFAULT_FETCH_DAYS - 1
+        end
+
         protected
 
         def validate_config
@@ -50,9 +54,11 @@ module Embulk
         def adjust_timezone(epoch)
           # Adjust timezone offset to get UTC time
           # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
-          tz = TZInfo::Timezone.get(@timezone)
-          offset = tz.period_for_local(epoch, true).offset.utc_total_offset
-          epoch - offset
+          if epoch.present?
+            tz = TZInfo::Timezone.get(@timezone)
+            offset = tz.period_for_local(epoch, true).offset.utc_total_offset
+            epoch - offset
+          end
         end
 
         def today(timezone)
@@ -71,10 +77,6 @@ module Embulk
           else
             @config.param(:export_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_EXPORT_ENDPOINT)
           end
-        end
-
-        def default_guess_start_date(timezone)
-          today(timezone) - DEFAULT_FETCH_DAYS - 1
         end
 
         def extract_values(record)

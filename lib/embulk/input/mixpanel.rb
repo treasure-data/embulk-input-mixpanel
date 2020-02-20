@@ -7,6 +7,7 @@ module Embulk
       Plugin.register_input("mixpanel", self)
 
       @@service = nil
+
       def self.transaction(config, &control)
         @@service = service(config)
         @@service.validate_config
@@ -48,7 +49,7 @@ module Embulk
       def self.guess(config)
         @@service = service(config)
         @@service.validate_config
-        return {"columns" => @@service.guess_columns}
+        return {"columns"=>@@service.guess_columns}
       end
 
       def init
@@ -63,15 +64,11 @@ module Embulk
       private
 
       def self.service(config)
-        if @@service.present?
-          @@service
+        jql_mode = config.param(:jql_mode, :bool, default: false)
+        if jql_mode
+          Service::JqlService.new(config)
         else
-          jql_mode = config.param(:jql_mode, :bool, default: false)
-          if jql_mode
-            Service::JqlService.new(config)
-          else
-            Service::ExportService.new(config)
-          end
+          Service::ExportService.new(config)
         end
       end
     end

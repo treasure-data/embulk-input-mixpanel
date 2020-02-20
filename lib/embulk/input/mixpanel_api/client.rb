@@ -60,19 +60,23 @@ module Embulk
           end
         end
 
-        def send_jql_script_small_dataset(params = {}, &block)
+        def send_jql_script_small_dataset(params = {})
+          sample_records = []
+
           retryer.with_retry do
             data = request_jql(params)
             count = 0
             data.each do |record|
               break if (count == SMALL_NUM_OF_RECORDS)
               count = count + 1
-              block.call record
+              sample_records << record
             end
           end
+
+          sample_records
         end
 
-        def send_jql(params = {}, &block)
+        def send_jql_script(params = {}, &block)
           retryer.with_retry do
             data = request_jql(params)
             data.each do |record|
