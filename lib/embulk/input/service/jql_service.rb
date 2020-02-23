@@ -54,12 +54,15 @@ module Embulk
 
           if preview?
             sample_records = client.send_jql_script_small_dataset(parameters(@dates.first, @dates.last, task[:jql_script]))
+            validate_result(sample_records)
             sample_records.each do |record|
               values = extract_values(record)
               page_builder.add(values)
             end
           else
-            client.send_jql_script(parameters(@dates.first, @dates.last, task[:jql_script])) do |record|
+            records = client.send_jql_script(parameters(@dates.first, @dates.last, task[:jql_script]))
+            validate_result(records)
+            records.each do |record|
               values = extract_values(record)
               page_builder.add(values)
             end
@@ -69,6 +72,20 @@ module Embulk
         end
 
         def guess_from_records(sample_props)
+          validate_result(sample_props)
+          schema = Guess::SchemaGuess.from_hash_records(sample_props)
+
+          schema.map do |col|
+            result = {
+              name: col.name,
+              type: col.type,
+            }
+            if (col.name.eql? "time") || (col.eql? "last_seen")
+              result[:format] = col.format if col.format
+            end
+            result
+          end
+
           begin
             schema = Guess::SchemaGuess.from_hash_records(sample_props)
             schema.map do |col|
@@ -136,6 +153,14 @@ module Embulk
 
           RangeGenerator.new(from_date, fetch_days, timezone).generate_range
         end
+
+        def validate_result(records)
+          if records.is_a?(Array) && records.first.is_a?(Integer)
+            # incase using reduce, it only return the number of records
+            raise Embulk::ConfigError.new("Non-supported result. Revise your JQL.")
+          end
+        end
+
       end
     end
   end

@@ -76,12 +76,9 @@ module Embulk
           sample_records
         end
 
-        def send_jql_script(params = {}, &block)
+        def send_jql_script(params = {})
           retryer.with_retry do
-            data = request_jql(params)
-            data.each do |record|
-              block.call record
-            end
+            request_jql(params)
           end
         end
 

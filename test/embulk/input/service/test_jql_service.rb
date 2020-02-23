@@ -555,7 +555,6 @@ module Embulk
           end
           mock(@page_builder).add(anything).times(records.length)
           mock(@page_builder).finish
-
           task_report = @plugin.run
           assert_equal("2015-03-01", task_report[:to_date])
         end
