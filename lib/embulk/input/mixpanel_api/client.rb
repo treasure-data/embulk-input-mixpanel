@@ -3,6 +3,7 @@ require "digest/md5"
 require "json"
 require "httpclient"
 require "embulk/input/mixpanel_api/exceptions"
+require 'pry'
 
 module Embulk
   module Input
@@ -60,28 +61,6 @@ module Embulk
           end
         end
 
-        def send_jql_script_small_dataset(params = {})
-          sample_records = []
-
-          retryer.with_retry do
-            data = request_jql(params)
-            count = 0
-            data.each do |record|
-              break if (count == SMALL_NUM_OF_RECORDS)
-              count = count + 1
-              sample_records << record
-            end
-          end
-
-          sample_records
-        end
-
-        def send_jql_script(params = {})
-          retryer.with_retry do
-            request_jql(params)
-          end
-        end
-
         def export_for_small_dataset(params = {})
           yesterday = Date.today - 1
           latest_tried_to_date = nil
@@ -97,6 +76,18 @@ module Embulk
           end
 
           raise ConfigError.new "#{params["from_date"]}..#{latest_tried_to_date} has no record."
+        end
+
+        def send_jql_script(params = {})
+          retryer.with_retry do
+            request_jql(params)
+          end
+        end
+
+        def send_jql_script_small_dataset(params = {})
+          retryer.with_retry do
+            request_jql(params)[0..SMALL_NUM_OF_RECORDS - 1]
+          end
         end
 
         def try_to_dates(from_date)
@@ -155,6 +146,7 @@ module Embulk
         def request_jql(parameters)
           Embulk.logger.info "Sending request to #{@endpoint}"
           response = httpclient.post(@endpoint, query_string(parameters))
+
           handle_error(response, response.body)
 
           begin

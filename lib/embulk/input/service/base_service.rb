@@ -23,6 +23,14 @@ module Embulk
           today(timezone) - DEFAULT_FETCH_DAYS - 1
         end
 
+        def create_next_config_diff(task_report)
+          next_to_date = Date.parse(task_report[:to_date])
+          {
+            from_date: next_to_date.to_s,
+            latest_fetched_time: task_report[:latest_fetched_time],
+          }
+        end
+
         protected
 
         def validate_config
@@ -38,17 +46,6 @@ module Embulk
           unless MixpanelApi::Client.mixpanel_available?(export_endpoint)
             raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")
           end
-        end
-
-        def guess_range
-          time_zone = @config.param(:timezone, :string, default: "")
-          from_date = @config.param(:from_date, :string, default: default_guess_start_date(time_zone).to_s)
-          fetch_days = @config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
-          range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
-          if range.empty?
-            return default_guess_start_date(time_zone)..(today(time_zone) - 1)
-          end
-          range
         end
 
         def adjust_timezone(epoch)
@@ -88,7 +85,7 @@ module Embulk
         def preview?
           begin
             org.embulk.spi.Exec.isPreview()
-          rescue java.lang.NullPointerException => e
+          rescue java.lang.NullPointerException=>e
             false
           end
         end
@@ -98,8 +95,8 @@ module Embulk
             @client
           else
             retryer = perfect_retry({
-              retry_initial_wait_sec: @config.param(:retry_initial_wait_sec, :integer, default: 1),
-              retry_limit: @config.param(:retry_limit, :integer, default: 5),
+              retry_initial_wait_sec: @config[:retry_initial_wait_sec] ? @config[:retry_initial_wait_sec] : 1,
+              retry_limit: @config[:retry_limit] ?  @config[:retry_limit] : 5,
             })
             MixpanelApi::Client.new(@config.param(:api_secret, :string), retryer, export_endpoint)
           end
@@ -108,8 +105,8 @@ module Embulk
         def perfect_retry(task)
           PerfectRetry.new do |config|
             config.limit = task[:retry_limit]
-            config.sleep = proc{|n| task[:retry_initial_wait_sec] * (2 * (n - 1)) }
-            config.dont_rescues = [Embulk::ConfigError,MixpanelApi::IncompleteExportResponseError]
+            config.sleep = proc {|n| task[:retry_initial_wait_sec] * (2 * (n - 1))}
+            config.dont_rescues = [Embulk::ConfigError, MixpanelApi::IncompleteExportResponseError]
             config.rescues = [RuntimeError]
             config.log_level = nil
             config.logger = Embulk.logger

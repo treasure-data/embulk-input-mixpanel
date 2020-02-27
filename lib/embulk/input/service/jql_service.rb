@@ -1,15 +1,23 @@
 require 'embulk/input/service/base_service'
+require "pry"
 
 module Embulk
   module Input
     module Service
       class JqlService < BaseService
 
+        FROM_DATE_PARAM = "params.from_date"
+        TO_DATE_PARAM = "params.to_date"
+
         def validate_config
           super
-          jql_script = @config.param(:jql_script, :string, default: nil)
 
-          validate_jql_script(jql_script)
+          validate_jql_script
+          validate_fetch_days
+          if @config.param(:incremental, :bool, default: true)
+            validate_jql_script_contain_time_params
+            validate_from_date_required
+          end
         end
 
         def create_task
@@ -18,7 +26,9 @@ module Embulk
             api_secret: @config.param(:api_secret, :string),
             export_endpoint: export_endpoint,
             incremental: @config.param(:incremental, :bool, default: true),
-            dates: range,
+            from_date: @config.param(:from_date, :string, default: nil),
+            fetch_days: @config.param(:fetch_days, :integer, default: nil),
+            slice_range: @config.param(:slice_range, :integer, default: 7),
             schema: @config.param(:columns, :array),
             retry_initial_wait_sec: @config.param(:retry_initial_wait_sec, :integer, default: 1),
             retry_limit: @config.param(:retry_limit, :integer, default: 5),
@@ -27,48 +37,51 @@ module Embulk
           }
         end
 
-        def create_next_config_diff(task_report)
-          next_to_date = Date.parse(task_report[:to_date]).next_day(1)
-          {
-            from_date: next_to_date.to_s
-          }
-        end
-
         def guess_columns
-          range = guess_range
-          # giveup_when_mixpanel_is_down
-          Embulk.logger.info "Guessing schema using #{range.first}..#{range.last}"
+          giveup_when_mixpanel_is_down
+
+          from_date = @config.param(:from_date, :string, default: nil)
+
+          if from_date
+            range = guess_range
+            Embulk.logger.info "Guessing schema using #{range.first}..#{range.last}"
+          end
+
           client = create_client
 
-          sample_records = client.send_jql_script_small_dataset(parameters(range.first, range.last, @config.param(:jql_script, :string, nil)))
+          sample_records = client.send_jql_script_small_dataset(create_sending_params(@config.param(:jql_script, :string, default: nil), range))
           guess_from_records(sample_records)
         end
 
         def ingest(task, page_builder)
-          giveup_when_mixpanel_is_down
-          @dates = task[:dates]
           @schema = task[:schema]
           @timezone = task[:timezone]
-
           client = create_client
+          dates = range
+          if dates
+            dates.each_slice(task[:slice_range]) do |slice_dates|
+              Embulk.logger.info "Fetching date from #{slice_dates.first}..#{slice_dates.last}"
 
-          if preview?
-            sample_records = client.send_jql_script_small_dataset(parameters(@dates.first, @dates.last, task[:jql_script]))
-            validate_result(sample_records)
-            sample_records.each do |record|
-              values = extract_values(record)
-              page_builder.add(values)
-            end
-          else
-            records = client.send_jql_script(parameters(@dates.first, @dates.last, task[:jql_script]))
-            validate_result(records)
-            records.each do |record|
-              values = extract_values(record)
-              page_builder.add(values)
+              if preview?
+                records = client.send_jql_script_small_dataset(create_sending_params(@config.param(:jql_script, :string, default: nil), slice_dates))
+              else
+                records = client.send_jql_script(create_sending_params(task[:jql_script], slice_dates))
+              end
+              validate_result(records)
+              records.each do |record|
+                values = extract_values(record)
+                page_builder.add(values)
+              end
+
+              break if preview?
             end
           end
           page_builder.finish
-          create_task_report
+
+          if task[:incremental] && !preview?
+            return create_task_report
+          end
+          {}
         end
 
         def guess_from_records(sample_props)
@@ -103,31 +116,53 @@ module Embulk
           end
         end
 
-        def parameters(from_date, to_date, script)
+        def parameters(script, from_date = nil, to_date = nil)
           {
             params: params(from_date, to_date),
             script: script
           }
         end
 
+        def adjust_timezone(epoch)
+          # Adjust timezone offset to get UTC time
+          # c.f. https://mixpanel.com/docs/api-documentation/exporting-raw-data-you-inserted-into-mixpanel#export
+          tz = TZInfo::Timezone.get(@timezone)
+
+          begin
+            if epoch.present?
+              offset = tz.period_for_local(epoch, true).offset.utc_total_offset
+              epoch - offset
+            end
+              # TZInfo::PeriodNotFound signals that there is no equivalent UTC time (for example,
+              # during the transition from standard time to daylight savings time when the clocks are moved forward and an hour is skipped).
+              # tz.local_time(2018, 3, 11, 2, 30, 0, 0)
+          rescue TZInfo::PeriodNotFound
+            epoch + 1.hour
+            offset = tz.period_for_local(epoch, true).offset.utc_total_offset
+            epoch - offset
+          end
+        end
+
         private
 
         def create_task_report
           {
-            to_date: @dates.last || today(@timezone) - 1,
+            to_date: range.last || today(@timezone) - 1,
           }
+        end
+
+        def create_sending_params(jql_script, range = nil)
+          range.present? ? parameters(jql_script, range.first, range.last) : parameters(jql_script)
         end
 
         def params(from_date, to_date)
-          {
-            from_date: from_date,
-            to_date: to_date
-          }
-        end
-
-        def validate_jql_script(jql_script)
-          if jql_script.blank?
-            raise Embulk::ConfigError.new("JQL script shouldn't be empty or null")
+          if from_date && to_date
+            {
+              from_date: from_date,
+              to_date: to_date
+            }
+          else
+            {}
           end
         end
 
@@ -146,18 +181,66 @@ module Embulk
           end
         end
 
-        def range
-          timezone = @config.param(:timezone, :string, default: "")
-          from_date = @config.param(:from_date, :string, default: (today(timezone) - 2).to_s)
-          fetch_days = @config.param(:fetch_days, :integer, default: nil)
+        def guess_range
+          time_zone = @config.param(:timezone, :string, default: "")
+          from_date = @config.param(:from_date, :string, default: nil)
+          fetch_days = @config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
 
-          RangeGenerator.new(from_date, fetch_days, timezone).generate_range
+          if from_date
+            range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
+
+            if range.empty?
+              return default_guess_start_date(time_zone)..(today(time_zone) - 1)
+            end
+          end
+
+          range
+        end
+
+        def range
+          binding.pry
+          timezone = @config.param(:timezone, :string, default: "")
+          from_date = @config.param(:from_date, :string, default: nil)
+
+          if from_date.present?
+            fetch_days = @config[:fetch_days].present? ? @config[:fetch_days] : today(timezone) - 1 - Date.parse(from_date)
+            RangeGenerator.new(from_date, fetch_days, timezone).generate_range
+          end
         end
 
         def validate_result(records)
           if records.is_a?(Array) && records.first.is_a?(Integer)
             # incase using reduce, it only return the number of records
             raise Embulk::ConfigError.new("Non-supported result. Revise your JQL.")
+          end
+        end
+
+        def validate_jql_script_contain_time_params
+          jql_script = @config.param(:jql_script, :string, default: nil)
+          unless jql_script.include?(FROM_DATE_PARAM) && jql_script.include?(TO_DATE_PARAM)
+            #TODO: update message
+          end
+        end
+
+        def validate_from_date_required
+          from_date = @config.param(:from_date, :string, default: nil)
+          unless from_date.present?
+            raise Embulk::ConfigError.new("from_date is required when running incremental")
+          end
+        end
+
+        def validate_jql_script
+          jql_script = @config.param(:jql_script, :string, default: nil)
+          if jql_script.blank?
+            raise Embulk::ConfigError.new("JQL script shouldn't be empty or null")
+          end
+        end
+
+        def validate_fetch_days
+
+          fetch_days = @config.param(:fetch_days, :integer, default: nil)
+          if fetch_days && fetch_days <= 0
+            raise Embulk::ConfigError.new("fetch_days should be larger than 0")
           end
         end
 

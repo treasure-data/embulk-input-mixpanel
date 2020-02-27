@@ -1,18 +1,16 @@
 require "embulk/input/service/jql_service"
 require "embulk/input/service/export_service"
+require "pry"
 
 module Embulk
   module Input
     class Mixpanel < InputPlugin
       Plugin.register_input("mixpanel", self)
-
-      @@service = nil
-
+      
       def self.transaction(config, &control)
-        @@service = service(config)
-        @@service.validate_config
-        task = @@service.create_task
-        Embulk.logger.info "Try to fetch data from #{task[:dates].first} to #{task[:dates].last}"
+        service = service(config)
+        service.validate_config
+        task = service.create_task
 
         columns = task[:schema].map do |column|
           name = column["name"]
@@ -40,16 +38,17 @@ module Embulk
         # implementation is terrible.
         if task[:incremental]
           task_report = task_reports.first
-          next_config_diff = @@service.create_next_config_diff(task_report)
+          service = service(task)
+          next_config_diff = service.create_next_config_diff(task_report)
           return next_config_diff
         end
         return {}
       end
 
       def self.guess(config)
-        @@service = service(config)
-        @@service.validate_config
-        return {"columns"=>@@service.guess_columns}
+        service = service(config)
+        service.validate_config
+        return {"columns"=>service.guess_columns}
       end
 
       def init
@@ -58,13 +57,14 @@ module Embulk
       end
 
       def run
-        @@service.ingest(task, page_builder)
+
+        Mixpanel::service(task).ingest(task, page_builder)
       end
 
       private
 
       def self.service(config)
-        jql_mode = config.param(:jql_mode, :bool, default: false)
+        jql_mode = config[:jql_mode]
         if jql_mode
           Service::JqlService.new(config)
         else
