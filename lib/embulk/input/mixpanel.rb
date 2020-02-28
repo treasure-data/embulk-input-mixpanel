@@ -1,6 +1,5 @@
 require "embulk/input/service/jql_service"
 require "embulk/input/service/export_service"
-require "pry"
 
 module Embulk
   module Input
@@ -11,6 +10,7 @@ module Embulk
         service = service(config)
         service.validate_config
         task = service.create_task
+        Embulk.logger.info "Try to fetch data from #{task[:dates].first} to #{task[:dates].last}"
 
         columns = task[:schema].map do |column|
           name = column["name"]
@@ -57,8 +57,7 @@ module Embulk
       end
 
       def run
-
-        Mixpanel::service(task).ingest(task, page_builder)
+        Mixpanel::service(DataSource[task.to_a]).ingest(task, page_builder)
       end
 
       private

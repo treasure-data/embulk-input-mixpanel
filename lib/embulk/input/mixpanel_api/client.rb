@@ -3,7 +3,6 @@ require "digest/md5"
 require "json"
 require "httpclient"
 require "embulk/input/mixpanel_api/exceptions"
-require 'pry'
 
 module Embulk
   module Input

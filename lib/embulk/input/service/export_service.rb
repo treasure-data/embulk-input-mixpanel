@@ -56,6 +56,14 @@ module Embulk
           }
         end
 
+        def create_next_config_diff(task_report)
+          next_to_date = Date.parse(task_report[:to_date])
+          {
+            from_date: next_to_date.to_s,
+            latest_fetched_time: task_report[:latest_fetched_time],
+          }
+        end
+
         def ingest(task, page_builder)
           giveup_when_mixpanel_is_down
 
@@ -80,6 +88,9 @@ module Embulk
             #
             # All of records with wrong timezone will be ignored instead of throw exception out
             ignored_wrong_daylight_tz_record_count = 0
+            unless preview?
+              Embulk.logger.info "Fetching data from #{slice_dates.first} to #{slice_dates.last} ..."
+            end
             record_time_column = incremental_column || DEFAULT_TIME_COLUMN
             begin
               fetch(slice_dates, prev_latest_fetched_time, task).each do |record|
@@ -273,16 +284,6 @@ module Embulk
           RangeGenerator.new(from_date, fetch_days, timezone).generate_range
         end
 
-        def guess_range
-          time_zone = @config.param(:timezone, :string, default: "")
-          from_date = @config.param(:from_date, :string, default: default_guess_start_date(time_zone).to_s)
-          fetch_days = @config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
-          range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
-          if range.empty?
-            return default_guess_start_date(time_zone)..(today(time_zone) - 1)
-          end
-          range
-        end
       end
     end
   end
