@@ -473,90 +473,90 @@ module Embulk
         assert_equal(expected, actual)
       end
 
-      # sub_test_case "retry" do
-      #   def setup
-      #     @page_builder = Object.new
-      #     @plugin = Mixpanel.new(task, nil, nil, @page_builder)
-      #     @plugin.init
-      #     @httpclient = HTTPClient.new
-      #     stub(HTTPClient).new { @httpclient }
-      #     stub(@page_builder).add {}
-      #     stub(@page_builder).finish {}
-      #     stub(Embulk.logger).warn {}
-      #     stub(Embulk.logger).info {}
-      #     stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
-      #   end
-      #
-      #   test "200" do
-      #     stub_response(200)
-      #     mock(Embulk.logger).warn(/Retrying/).never
-      #     mock(@page_builder).finish
-      #     @plugin.run
-      #   end
-      #
-      #   test "400" do
-      #     stub_response(400)
-      #     mock(Embulk.logger).warn(/Retrying/).never
-      #     assert_raise(Embulk::ConfigError) do
-      #       @plugin.run
-      #     end
-      #   end
-      #
-      #   test "401" do
-      #     stub_response(401)
-      #     mock(Embulk.logger).warn(/Retrying/).never
-      #     assert_raise(Embulk::ConfigError) do
-      #       @plugin.run
-      #     end
-      #   end
-      #
-      #   test "500" do
-      #     stub_response(500)
-      #     mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
-      #     assert_raise(PerfectRetry::TooManyRetry) do
-      #       @plugin.run
-      #     end
-      #   end
-      #
-      #   test "timeout" do
-      #     stub(@httpclient).get { raise HTTPClient::TimeoutError, "timeout" }
-      #     mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
-      #
-      #     assert_raise(PerfectRetry::TooManyRetry) do
-      #       @plugin.run
-      #     end
-      #   end
-      #
-      #   test "Mixpanel is down" do
-      #     stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
-      #
-      #     assert_raise(Embulk::DataError) do
-      #       @plugin.run
-      #     end
-      #   end
-      #
-      #   def stub_response(code)
-      #     stub(@httpclient.test_loopback_http_response).shift { "HTTP/1.1 #{code}\r\n\r\n" }
-      #   end
-      #
-      #   def task
-      #     {
-      #       api_secret: API_SECRET,
-      #       export_endpoint: "https://data.mixpanel.com/api/2.0/export/",
-      #       timezone: TIMEZONE,
-      #       schema: schema,
-      #       dates: DATES.to_a.map(&:to_s),
-      #       params: Mixpanel.service(embulk_config).export_params,
-      #       fetch_unknown_columns: false,
-      #       fetch_custom_properties: false,
-      #       retry_initial_wait_sec: 0,
-      #       retry_limit: 3,
-      #       latest_fetched_time: 0,
-      #       slice_range: 7,
-      #       job_start_time: JOB_START_TIME
-      #     }
-      #   end
-      # end
+      sub_test_case "retry" do
+        def setup
+          @page_builder = Object.new
+          @plugin = Mixpanel.new(task, nil, nil, @page_builder)
+          @plugin.init
+          @httpclient = HTTPClient.new
+          stub(HTTPClient).new { @httpclient }
+          stub(@page_builder).add {}
+          stub(@page_builder).finish {}
+          stub(Embulk.logger).warn {}
+          stub(Embulk.logger).info {}
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
+        end
+
+        test "200" do
+          stub_response(200)
+          mock(Embulk.logger).warn(/Retrying/).never
+          mock(@page_builder).finish
+          @plugin.run
+        end
+
+        test "400" do
+          stub_response(400)
+          mock(Embulk.logger).warn(/Retrying/).never
+          assert_raise(Embulk::ConfigError) do
+            @plugin.run
+          end
+        end
+
+        test "401" do
+          stub_response(401)
+          mock(Embulk.logger).warn(/Retrying/).never
+          assert_raise(Embulk::ConfigError) do
+            @plugin.run
+          end
+        end
+
+        test "500" do
+          stub_response(500)
+          mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
+          assert_raise(PerfectRetry::TooManyRetry) do
+            @plugin.run
+          end
+        end
+
+        test "timeout" do
+          stub(@httpclient).get { raise HTTPClient::TimeoutError, "timeout" }
+          mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
+
+          assert_raise(PerfectRetry::TooManyRetry) do
+            @plugin.run
+          end
+        end
+
+        test "Mixpanel is down" do
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
+
+          assert_raise(Embulk::DataError) do
+            @plugin.run
+          end
+        end
+
+        def stub_response(code)
+          stub(@httpclient.test_loopback_http_response).shift { "HTTP/1.1 #{code}\r\n\r\n" }
+        end
+
+        def task
+          {
+            api_secret: API_SECRET,
+            export_endpoint: "https://data.mixpanel.com/api/2.0/export/",
+            timezone: TIMEZONE,
+            schema: schema,
+            dates: DATES.to_a.map(&:to_s),
+            params: Mixpanel.service(embulk_config).export_params,
+            fetch_unknown_columns: false,
+            fetch_custom_properties: false,
+            retry_initial_wait_sec: 0,
+            retry_limit: 3,
+            latest_fetched_time: 0,
+            slice_range: 7,
+            job_start_time: JOB_START_TIME
+          }
+        end
+      end
 
       class RunTest < self
         def setup_client

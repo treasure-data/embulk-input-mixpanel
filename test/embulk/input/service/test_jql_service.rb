@@ -561,6 +561,32 @@ module Embulk
           assert_equal("2015-03-01", task_report[:to_date])
         end
 
+        def test_run_with_incremental_column
+
+          any_instance_of(Embulk::Input::Service::JqlService) do |klass|
+            stub(klass).preview? {false}
+          end
+          mock(@page_builder).add(anything).times(records.length)
+          mock(@page_builder).finish
+          plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>"1452027551999"}), nil, nil, @page_builder)
+          task_report = plugin.run
+          assert_equal("2015-03-01", task_report[:to_date])
+          assert_equal("1452027552000", task_report[:latest_fetched_time])
+        end
+
+        def test_run_with_incremental_column_skip
+
+          any_instance_of(Embulk::Input::Service::JqlService) do |klass|
+            stub(klass).preview? {false}
+          end
+          mock(@page_builder).add(anything).times(0)
+          mock(@page_builder).finish
+          plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>"1452027552001"}), nil, nil, @page_builder)
+          task_report = plugin.run
+          assert_equal("2015-03-01", task_report[:to_date])
+          assert_equal("1452027552001", task_report[:latest_fetched_time])
+        end
+
         class SliceRangeRunTest < self
 
           def test_default_slice_range
@@ -604,6 +630,8 @@ module Embulk
           jql_mode: true,
           jql_script: JQL_SCRIPT,
           slice_range: SLICE_RANGE,
+          incremental_column: nil,
+          latest_fetched_time: 0,
         }
       end
 

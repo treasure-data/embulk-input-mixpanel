@@ -29,6 +29,8 @@ module Embulk
             schema: @config.param(:columns, :array),
             retry_initial_wait_sec: @config.param(:retry_initial_wait_sec, :integer, default: 1),
             retry_limit: @config.param(:retry_limit, :integer, default: 5),
+            incremental_column: @config.param(:incremental_column, :string, default: nil),
+            latest_fetched_time: @config.param(:latest_fetched_time, :integer, default: 0),
             jql_mode: true,
             jql_script: @config.param(:jql_script, :string, nil)
           }
@@ -49,8 +51,14 @@ module Embulk
           @dates = task[:dates]
           @schema = task[:schema]
           @timezone = task[:timezone]
+          incremental_column = task[:incremental_column]
+          latest_fetched_time = task[:latest_fetched_time]
+          incremental = task[:incremental]
+
           client = create_client
 
+          ignored_fetched_record_count = 0
+          next_fetched_time = latest_fetched_time
           @dates.each_slice(task[:slice_range]) do |slice_dates|
             Embulk.logger.info "Fetching date from #{slice_dates.first}..#{slice_dates.last}"
             if preview?
@@ -59,17 +67,37 @@ module Embulk
               records = client.send_jql_script(parameters(task[:jql_script], slice_dates.first, slice_dates.last))
             end
             validate_result(records)
+
             records.each do |record|
+              if incremental
+                unless incremental_column
+                  Embulk.logger.warn "incremental_column should be specified when running in incremental mode to avoid duplicated"
+                  Embulk.logger.warn "Use default value #{DEFAULT_TIME_COLUMN}"
+                  incremental_column = DEFAULT_TIME_COLUMN
+                end
+
+                if @schema.map {|col| col["name"]}.include?(incremental_column)
+                  record_incremental_column = record[incremental_column.to_sym]
+                  if record_incremental_column
+                    if record_incremental_column <= latest_fetched_time.to_i
+                      ignored_fetched_record_count += 1
+                      next
+                    else
+                      next_fetched_time = [record_incremental_column, latest_fetched_time.to_i].max
+                    end
+                  end
+                end
+              end
               values = extract_values(record)
               page_builder.add(values)
             end
-
             break if preview?
           end
+          Embulk.logger.info "Skip #{ignored_fetched_record_count} rows"
           page_builder.finish
 
           if task[:incremental] && !preview?
-            return create_task_report
+            return create_task_report(next_fetched_time)
           end
           {}
         end
@@ -135,9 +163,10 @@ module Embulk
 
         private
 
-        def create_task_report
+        def create_task_report(next_fetched_time)
           {
             to_date: @dates.last || today(@timezone) - 1,
+            latest_fetched_time: next_fetched_time.to_s
           }
         end
 
