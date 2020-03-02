@@ -13,6 +13,7 @@ module Embulk
 
           validate_jql_script
           validate_fetch_days
+
           if @config.param(:incremental, :bool, default: true)
             validate_jql_script_contain_time_params
           end
@@ -208,9 +209,22 @@ module Embulk
         end
 
         def validate_jql_script_contain_time_params
-          jql_script = @config.param(:jql_script, :string, default: nil)
-          unless jql_script.include?(FROM_DATE_PARAM) && jql_script.include?(TO_DATE_PARAM)
-            #TODO: update message
+          client = create_client
+
+          params_script_only = {
+            params: {},
+            script: @config[:jql_script]
+          }
+
+          response = client.send_brief_checked_jql_script(params_script_only)
+
+          if response
+            message = response["error"]
+            if message
+              unless message.include?("argument must be an object with 'from_date' and 'to_date' properties")
+                Embulk.logger.warn "Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data."
+              end
+            end
           end
         end
 

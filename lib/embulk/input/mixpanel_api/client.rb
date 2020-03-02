@@ -77,6 +77,31 @@ module Embulk
           raise ConfigError.new "#{params["from_date"]}..#{latest_tried_to_date} has no record."
         end
 
+        def send_brief_checked_jql_script(params = {})
+          retryer.with_retry do
+            Embulk.logger.info "Sending brief check request to #{@endpoint}"
+            response = httpclient.post(@endpoint, query_string(params))
+
+            case response.code
+            when 400..499
+              if response.code == 400
+                begin
+                  return JSON.parse(response.body)
+                rescue =>e
+                  raise Embulk::DataError.new(e)
+                end
+              end
+              if response.code == 429
+                # [429] {"error": "too many export requests in progress for this project"}
+                raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
+              end
+              raise ConfigError.new("[#{response.code}] #{error_response}")
+            when 500..599
+              raise RuntimeError.new("[#{response.code}] #{error_response}")
+            end
+          end
+        end
+
         def send_jql_script(params = {})
           retryer.with_retry do
             request_jql(params)
@@ -120,18 +145,18 @@ module Embulk
           Embulk.logger.info "Sending request to #{@endpoint}"
           response = httpclient.get(@endpoint, params) do |response, chunk|
             # Only process data if response status is 200..299
-            if response.status/100 == 2
+            if response.status / 100 == 2
               chunk.each_line do |line|
                 begin
                   record = JSON.parse(buf + line)
                   block.call record
                   buf = ""
-                rescue JSON::ParserError => e
+                rescue JSON::ParserError=>e
                   buf << line
                 end
               end
             else
-               error_response << chunk
+              error_response << chunk
             end
           end
           handle_error(response, error_response)
@@ -150,7 +175,7 @@ module Embulk
 
           begin
             JSON.parse(response.body)
-          rescue => e
+            rescue =>e
             raise Embulk::DataError.new(e)
           end
         end
@@ -168,7 +193,7 @@ module Embulk
           params["limit"] = num_of_records
           Embulk.logger.info "Sending request to #{@endpoint}"
           res = httpclient.get(@endpoint, params)
-          handle_error(res,res.body)
+          handle_error(res, res.body)
           response_to_enum(res.body)
         end
 

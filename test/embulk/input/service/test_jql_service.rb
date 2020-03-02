@@ -169,6 +169,7 @@ module Embulk
 
         def stub_export_all
           any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).send_brief_checked_jql_script(anything) {}
             stub(klass).send_jql_script_small_dataset(anything) {records}
           end
         end
@@ -248,6 +249,9 @@ module Embulk
       class TransactionTest < self
         class FromDateTest < self
           def setup
+            any_instance_of(MixpanelApi::Client) do |klass|
+              stub(klass).send_brief_checked_jql_script(anything) {}
+            end
           end
 
           def test_info
@@ -269,6 +273,23 @@ module Embulk
             mock(Embulk.logger).warn(warn_message_regexp)
 
             Mixpanel.transaction(transaction_config, &control)
+          end
+
+          def test_warn_jql_script_contain_time_params
+            stub(Mixpanel).resume(satisfy_task_ignore_start_time(task.merge({dates: target_dates, jql_script: JQL_SCRIPT_WITH_PARAMS})), columns, 1, &control)
+            stub(Embulk.logger).info
+
+            error_response = {"request"=>"/api/2.0/jql/", "error"=>"[Validate failed]Events() argument must be an object with to_date' properties\n"}
+
+            any_instance_of(MixpanelApi::Client) do |klass|
+              stub(klass).send_brief_checked_jql_script(anything) {error_response}
+              stub(klass).send_jql_script_small_dataset(anything) {records}
+            end
+
+            mock(Embulk.logger).warn(anything)
+            mock(Embulk.logger).warn("Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data.")
+
+            Mixpanel.transaction(transaction_config.merge("jql_script"=>JQL_SCRIPT_WITH_PARAMS), &control)
           end
 
           private
@@ -393,9 +414,6 @@ module Embulk
           end
 
           def test_unsupport_data_format
-            any_instance_of(Embulk::Input::Service::JqlService) do |klass|
-              stub(klass).preview? {false}
-            end
             assert_raise(Embulk::ConfigError) do
               Mixpanel.guess(embulk_config)
             end
@@ -659,6 +677,7 @@ module Embulk
           type: "mixpanel",
           api_secret: API_SECRET,
           from_date: FROM_DATE,
+          timezone: TIMEZONE,
           fetch_days: DAYS,
           retry_initial_wait_sec: 2,
           retry_limit: 3,
