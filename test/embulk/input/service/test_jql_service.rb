@@ -15,7 +15,7 @@ module Embulk
       FROM_DATE = "2015-02-22".freeze
       TO_DATE = "2015-03-02".freeze
       DAYS = 8
-      SLICE_RANGE =  10
+      SLICE_RANGE = 10
       DATES = Date.parse(FROM_DATE)..(Date.parse(FROM_DATE) + DAYS - 1)
       TIMEZONE = "Asia/Tokyo".freeze
       SMALL_NUM_OF_RECORDS = 10
@@ -268,7 +268,7 @@ module Embulk
             stub(Mixpanel).resume(satisfy_task_ignore_start_time(task.merge(dates: target_dates)), columns, 1, &control)
             stub(Embulk.logger).info
 
-            ignore_dates = dates.map{|date| date.to_s}.to_a - target_dates
+            ignore_dates = dates.map {|date| date.to_s}.to_a - target_dates
             warn_message_regexp = /#{Regexp.escape(ignore_dates.first)}.+#{Regexp.escape(ignore_dates.last)}/
             mock(Embulk.logger).warn(warn_message_regexp)
 
@@ -403,7 +403,8 @@ module Embulk
         class ValidateTest < self
           def setup_client
             any_instance_of(MixpanelApi::Client) do |klass|
-              stub(klass).request_jql(anything) {[1]}
+              stub(klass).send_jql_script(anything) {[1]}
+              stub(klass).send_jql_script_small_dataset(anything) {[1]}
             end
           end
 
@@ -458,7 +459,7 @@ module Embulk
           params: {:from_date=>:from_date, :to_date=>:today},
           script: "function main() { return Events({ from_date: \"2015-01-01\", to_date:\"2015-01-02\"}",
         }
-        actual = Embulk::Input::Service::JqlService.new(config).parameters(JQL_SCRIPT,:from_date, :today)
+        actual = Embulk::Input::Service::JqlService.new(config).parameters(JQL_SCRIPT, :from_date, :today)
 
         assert_equal(expected, actual)
       end
@@ -469,12 +470,12 @@ module Embulk
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
           @plugin.init
           @httpclient = HTTPClient.new
-          stub(HTTPClient).new { @httpclient }
+          stub(HTTPClient).new {@httpclient}
           stub(@page_builder).add {}
           stub(@page_builder).finish {}
           stub(Embulk.logger).warn {}
           stub(Embulk.logger).info {}
-          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { true }
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? {true}
         end
 
         test "200 and don't support format" do
@@ -510,7 +511,7 @@ module Embulk
         end
 
         test "timeout" do
-          stub(@httpclient).post { raise HTTPClient::TimeoutError, "timeout" }
+          stub(@httpclient).post {raise HTTPClient::TimeoutError, "timeout"}
           mock(Embulk.logger).warn(/Retrying/).times(task[:retry_limit])
 
           assert_raise(PerfectRetry::TooManyRetry) do
@@ -519,15 +520,15 @@ module Embulk
         end
 
         test "Mixpanel is down" do
-          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? { false }
+          stub(Embulk::Input::MixpanelApi::Client).mixpanel_available? {false}
 
           assert_raise(Embulk::ConfigError) do
             @plugin.run
           end
         end
 
-        def  stub_response(code)
-          stub(@httpclient.test_loopback_http_response).shift { "HTTP/1.1 #{code} \r\n\r\n" }
+        def stub_response(code)
+          stub(@httpclient.test_loopback_http_response).shift {"HTTP/1.1 #{code} \r\n\r\n"}
         end
 
         def task
@@ -550,7 +551,7 @@ module Embulk
       class RunTest < self
         def setup_client
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).request_jql(anything) {records}
+            stub(klass).send_jql_script(anything) {records}
           end
         end
 
@@ -558,15 +559,6 @@ module Embulk
           super
           @page_builder = Object.new
           @plugin = Mixpanel.new(DataSource[task.to_a], nil, nil, @page_builder)
-        end
-
-        def test_preview
-          any_instance_of(Embulk::Input::Service::JqlService) do |klass|
-            stub(klass).preview? {true}
-          end
-          mock(@page_builder).add(anything).times(SMALL_NUM_OF_RECORDS)
-          mock(@page_builder).finish
-          @plugin.run
         end
 
         def test_run
@@ -580,7 +572,6 @@ module Embulk
         end
 
         def test_run_with_incremental_column
-
           any_instance_of(Embulk::Input::Service::JqlService) do |klass|
             stub(klass).preview? {false}
           end
@@ -593,10 +584,10 @@ module Embulk
         end
 
         def test_run_with_incremental_column_skip
-
           any_instance_of(Embulk::Input::Service::JqlService) do |klass|
             stub(klass).preview? {false}
           end
+
           mock(@page_builder).add(anything).times(0)
           mock(@page_builder).finish
           plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>"1452027552001"}), nil, nil, @page_builder)
@@ -606,11 +597,10 @@ module Embulk
         end
 
         class SliceRangeRunTest < self
-
           def test_default_slice_range
             plugin = Mixpanel.new(task.merge(slice_range: 4), nil, nil, @page_builder)
             any_instance_of(Embulk::Input::Service::JqlService) do |klass|
-              stub(klass).preview? { false }
+              stub(klass).preview? {false}
             end
 
             mock(@page_builder).add(anything).times(records.length * 2)
@@ -619,6 +609,17 @@ module Embulk
           end
         end
 
+        def test_preview
+          any_instance_of(MixpanelApi::Client) do |klass|
+            stub(klass).request_jql(anything) {Struct.new(:code, :body).new(200, records.to_json)}
+          end
+          any_instance_of(Embulk::Input::Service::JqlService) do |klass|
+            stub(klass).preview? {true}
+          end
+          mock(@page_builder).add(anything).times(SMALL_NUM_OF_RECORDS)
+          mock(@page_builder).finish
+          @plugin.run
+        end
       end
 
       private
@@ -670,6 +671,25 @@ module Embulk
             }
           },
         ] * 30
+      end
+
+      def record
+
+          {
+            "name": "pageview",
+            "distinct_id": "02a99746-0f52-4acd-9a53-7deb763803ca",
+            "labels": [],
+            "time": 1452027552000,
+            "sampling_factor": 1,
+            "dataset": "$mixpanel",
+            "properties": {
+              "$email": "Alexander.Davidson@hotmailx.com",
+              "$import": true,
+              "country": "UK",
+              "load_time_ms": 4
+            }
+          }
+
       end
 
       def config

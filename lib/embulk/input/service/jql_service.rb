@@ -68,7 +68,6 @@ module Embulk
               records = client.send_jql_script(parameters(task[:jql_script], slice_dates.first, slice_dates.last))
             end
             validate_result(records)
-
             records.each do |record|
               if incremental
                 unless incremental_column
@@ -101,6 +100,20 @@ module Embulk
             return create_task_report(next_fetched_time)
           end
           {}
+        end
+
+        def guess_range
+          time_zone = @config.param(:timezone, :string, default: "")
+          from_date = @config.param(:from_date, :string, default: default_guess_start_date(time_zone).to_s)
+          fetch_days = @config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
+
+          fetch_days = [fetch_days, DEFAULT_FETCH_DAYS].min
+
+          range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
+          if range.empty?
+            return default_guess_start_date(time_zone)..(today(time_zone) - 1)
+          end
+          range
         end
 
         def guess_from_records(sample_props)

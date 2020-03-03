@@ -42,17 +42,6 @@ module Embulk
           TimezoneValidator.new(timezone).validate
         end
 
-        def guess_range
-          time_zone = @config.param(:timezone, :string, default: "")
-          from_date = @config.param(:from_date, :string, default: default_guess_start_date(time_zone).to_s)
-          fetch_days = @config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
-          range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
-          if range.empty?
-            return default_guess_start_date(time_zone)..(today(time_zone) - 1)
-          end
-          range
-        end
-
         def giveup_when_mixpanel_is_down
           unless MixpanelApi::Client.mixpanel_available?(export_endpoint)
             raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")

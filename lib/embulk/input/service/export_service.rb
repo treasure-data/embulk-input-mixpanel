@@ -164,6 +164,17 @@ module Embulk
           guess_from_records(client.export_for_small_dataset(params))
         end
 
+        def guess_range
+          time_zone = @config.param(:timezone, :string, default: "")
+          from_date = @config.param(:from_date, :string, default: default_guess_start_date(time_zone).to_s)
+          fetch_days = @config.param(:fetch_days, :integer, default: DEFAULT_FETCH_DAYS)
+          range = RangeGenerator.new(from_date, fetch_days, time_zone).generate_range
+          if range.empty?
+            return default_guess_start_date(time_zone)..(today(time_zone) - 1)
+          end
+          range
+        end
+
         def export_params
           event = @config.param(:event, :array, default: nil)
           event = event.nil? ? nil : event.to_json

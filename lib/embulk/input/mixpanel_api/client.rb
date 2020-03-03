@@ -15,6 +15,7 @@ module Embulk
         SMALL_NUM_OF_RECORDS = 10
         DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
         DEFAULT_JQL_ENDPOINT = "https://mixpanel.com/api/2.0/jql/".freeze
+        JQL_RATE_LIMIT = 60
 
         attr_reader :retryer
 
@@ -81,36 +82,51 @@ module Embulk
           retryer.with_retry do
             Embulk.logger.info "Sending brief check request to #{@endpoint}"
             response = httpclient.post(@endpoint, query_string(params))
+            body = response.body
 
             case response.code
             when 400..499
               if response.code == 400
                 begin
-                  return JSON.parse(response.body)
+                  return JSON.parse(body)
                 rescue =>e
-                  raise Embulk::DataError.new(e)
+                  raise Embulk::DataError.new(e.message)
                 end
               end
               if response.code == 429
                 # [429] {"error": "too many export requests in progress for this project"}
-                raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
+                raise RuntimeError.new("[#{response.code}] #{body} (will retry)")
               end
-              raise ConfigError.new("[#{response.code}] #{error_response}")
+              raise ConfigError.new("[#{response.code}] #{body}")
             when 500..599
-              raise RuntimeError.new("[#{response.code}] #{error_response}")
+              raise RuntimeError.new("[#{response.code}] #{body}")
             end
           end
         end
 
         def send_jql_script(params = {})
           retryer.with_retry do
-            request_jql(params)
+            response =  request_jql(params)
+
+            handle_error_for_JQL(response, response.body)
+
+            begin
+              return JSON.parse(response.body)
+            rescue =>e
+              raise Embulk::DataError.new(e)
+            end
           end
         end
 
         def send_jql_script_small_dataset(params = {})
           retryer.with_retry do
-            request_jql(params)[0..SMALL_NUM_OF_RECORDS - 1]
+            response = request_jql(params)
+            handle_error(response, response.body)
+            begin
+              return JSON.parse(response.body)[0..SMALL_NUM_OF_RECORDS - 1]
+            rescue =>e
+              raise Embulk::DataError.new(e.message)
+            end
           end
         end
 
@@ -169,15 +185,7 @@ module Embulk
 
         def request_jql(parameters)
           Embulk.logger.info "Sending request to #{@endpoint}"
-          response = httpclient.post(@endpoint, query_string(parameters))
-
-          handle_error(response, response.body)
-
-          begin
-            JSON.parse(response.body)
-            rescue =>e
-            raise Embulk::DataError.new(e)
-          end
+          httpclient.post(@endpoint, query_string(parameters))
         end
 
         def query_string(prs)
@@ -202,6 +210,22 @@ module Embulk
           case response.code
           when 400..499
             if response.code == 429
+              # [429] {"error": "too many export requests in progress for this project"}
+              raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
+            end
+            raise ConfigError.new("[#{response.code}] #{error_response}")
+          when 500..599
+            raise RuntimeError.new("[#{response.code}] #{error_response}")
+          end
+        end
+
+        def handle_error_for_JQL(response, error_response)
+          Embulk.logger.debug "response code: #{response.code}"
+          case response.code
+          when 400..499
+            if response.code == 429
+              Embulk.logger.info "Hit rate limit sleep for 1 hour"
+              sleep(60 * 60)
               # [429] {"error": "too many export requests in progress for this project"}
               raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
             end
