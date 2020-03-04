@@ -23,7 +23,7 @@ module Embulk
           {
             timezone: @config.param(:timezone, :string, default: ""),
             api_secret: @config.param(:api_secret, :string),
-            export_endpoint: export_endpoint,
+            jql_endpoint: endpoint,
             dates: range,
             incremental: @config.param(:incremental, :bool, default: true),
             slice_range: @config.param(:slice_range, :integer, default: 7),
@@ -173,6 +173,18 @@ module Embulk
             offset = tz.period_for_local(epoch, true).offset.utc_total_offset
             epoch - offset
           end
+        end
+
+        def next_from_date(task_report)
+          next_to_date = Date.parse(task_report[:to_date])
+          {
+            from_date: next_to_date.to_s,
+            latest_fetched_time: task_report[:latest_fetched_time],
+          }
+        end
+
+        def endpoint
+          @config.param(:jql_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_JQL_ENDPOINT)
         end
 
         private

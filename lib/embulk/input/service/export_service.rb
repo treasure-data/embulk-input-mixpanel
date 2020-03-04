@@ -39,7 +39,7 @@ module Embulk
             params: export_params,
             dates: range,
             timezone: @config.param(:timezone, :string, default: ""),
-            export_endpoint: export_endpoint,
+            export_endpoint: endpoint,
             api_secret: @config.param(:api_secret, :string),
             schema: @config.param(:columns, :array),
             fetch_unknown_columns: @config.param(:fetch_unknown_columns, :bool, default: false),
@@ -56,7 +56,7 @@ module Embulk
           }
         end
 
-        def create_next_config_diff(task_report)
+        def next_from_date(task_report)
           next_to_date = Date.parse(task_report[:to_date])
           {
             from_date: next_to_date.to_s,
@@ -228,6 +228,10 @@ module Embulk
               end
             end
           end
+        end
+
+        def endpoint
+          @config.param(:export_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_EXPORT_ENDPOINT)
         end
 
         private

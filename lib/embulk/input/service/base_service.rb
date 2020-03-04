@@ -23,14 +23,6 @@ module Embulk
           today(timezone) - DEFAULT_FETCH_DAYS - 1
         end
 
-        def create_next_config_diff(task_report)
-          next_to_date = Date.parse(task_report[:to_date])
-          {
-            from_date: next_to_date.to_s,
-            latest_fetched_time: task_report[:latest_fetched_time],
-          }
-        end
-
         protected
 
         def validate_config
@@ -43,7 +35,7 @@ module Embulk
         end
 
         def giveup_when_mixpanel_is_down
-          unless MixpanelApi::Client.mixpanel_available?(export_endpoint)
+          unless MixpanelApi::Client.mixpanel_available?(endpoint)
             raise Embulk::DataError.new("Mixpanel service is down. Please retry later.")
           end
         end
@@ -64,15 +56,6 @@ module Embulk
           else
             zone = ActiveSupport::TimeZone[timezone]
             zone.nil? ? Date.today : zone.today
-          end
-        end
-
-        def export_endpoint
-          jql_mode = @config.param(:jql_mode, :bool, default: false)
-          if jql_mode
-            @config.param(:export_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_JQL_ENDPOINT)
-          else
-            @config.param(:export_endpoint, :string, default: Embulk::Input::MixpanelApi::Client::DEFAULT_EXPORT_ENDPOINT)
           end
         end
 
@@ -100,7 +83,7 @@ module Embulk
               retry_initial_wait_sec: @config.param(:retry_initial_wait_sec, :integer, default: 1),
               retry_limit: @config.param(:retry_limit, :integer, default: 5),
             })
-            MixpanelApi::Client.new(@config.param(:api_secret, :string), retryer, export_endpoint)
+            MixpanelApi::Client.new(@config.param(:api_secret, :string), endpoint, retryer)
           end
         end
 

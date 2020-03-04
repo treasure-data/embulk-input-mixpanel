@@ -39,8 +39,8 @@ module Embulk
         if task[:incremental]
           task_report = task_reports.first
           service = service(task)
-          next_config_diff = service.create_next_config_diff(task_report)
-          return next_config_diff
+          next_from_date = service.next_from_date(task_report)
+          return next_from_date
         end
         return {}
       end
@@ -52,7 +52,6 @@ module Embulk
       end
 
       def init
-        @export_endpoint = task[:export_endpoint]
         @api_secret = task[:api_secret]
       end
 

@@ -9,22 +9,23 @@ module Embulk
         include OverrideAssertRaise
 
         API_SECRET = "api_secret".freeze
+        EXPORT_ENDPOINT = Embulk::Input::MixpanelApi::Client::DEFAULT_EXPORT_ENDPOINT
 
         def setup
-          @client = Client.new(API_SECRET)
+          @client = Client.new(API_SECRET, EXPORT_ENDPOINT)
           stub(Embulk).logger { ::Logger.new(IO::NULL) }
         end
 
         class TestKeepAlive < self
           def test_tcp_keepalive_enabled
-            client = Client.new(API_SECRET)
+            client = Client.new(API_SECRET, EXPORT_ENDPOINT)
             assert client.send(:httpclient).tcp_keepalive
           end
         end
 
         class TryToDatesTest < self
           def setup
-            @client = Client.new(API_SECRET)
+            @client = Client.new(API_SECRET, EXPORT_ENDPOINT)
           end
 
 
@@ -101,7 +102,6 @@ module Embulk
 
           def test_export_partial_with_error_json
             stub_client
-            # stub(@client).set_signatures(anything) {}
             stub_response(Struct.new(:code, :body).new(200, jsonl_dummy_responses+"\n{\"error\":"))
             records = []
             assert_raise MixpanelApi::IncompleteExportResponseError do

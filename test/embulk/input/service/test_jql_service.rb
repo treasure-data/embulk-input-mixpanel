@@ -534,7 +534,7 @@ module Embulk
         def task
           {
             api_secret: API_SECRET,
-            export_endpoint: "https://mixpanel.com/api/2.0/jql/",
+            jql_endpoint: "https://mixpanel.com/api/2.0/jql/",
             timezone: TIMEZONE,
             incremental: true,
             schema: schema,
@@ -639,7 +639,7 @@ module Embulk
       def task
         {
           api_secret: API_SECRET,
-          export_endpoint: "https://mixpanel.com/api/2.0/jql/",
+          jql_endpoint: "https://mixpanel.com/api/2.0/jql/",
           timezone: TIMEZONE,
           incremental: true,
           schema: schema,

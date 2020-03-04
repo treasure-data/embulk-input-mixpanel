@@ -42,7 +42,7 @@ module Embulk
           end
         end
 
-        def initialize(api_secret, retryer = nil, endpoint = DEFAULT_EXPORT_ENDPOINT)
+        def initialize(api_secret, endpoint, retryer = nil)
           @endpoint = endpoint
           @api_secret = api_secret
           @retryer = retryer || PerfectRetry.new do |config|
@@ -85,18 +85,15 @@ module Embulk
             body = response.body
 
             case response.code
+            when 400
+              begin
+                return JSON.parse(body)
+              rescue =>e
+                raise Embulk::DataError.new(e.message)
+              end
+            when 429
+              raise RuntimeError.new("[#{response.code}] #{body} (will retry)")
             when 400..499
-              if response.code == 400
-                begin
-                  return JSON.parse(body)
-                rescue =>e
-                  raise Embulk::DataError.new(e.message)
-                end
-              end
-              if response.code == 429
-                # [429] {"error": "too many export requests in progress for this project"}
-                raise RuntimeError.new("[#{response.code}] #{body} (will retry)")
-              end
               raise ConfigError.new("[#{response.code}] #{body}")
             when 500..599
               raise RuntimeError.new("[#{response.code}] #{body}")
@@ -106,13 +103,11 @@ module Embulk
 
         def send_jql_script(params = {})
           retryer.with_retry do
-            response =  request_jql(params)
-
+            response = request_jql(params)
             handle_error_for_JQL(response, response.body)
-
             begin
               return JSON.parse(response.body)
-            rescue =>e
+              rescue =>e
               raise Embulk::DataError.new(e)
             end
           end
@@ -124,7 +119,7 @@ module Embulk
             handle_error(response, response.body)
             begin
               return JSON.parse(response.body)[0..SMALL_NUM_OF_RECORDS - 1]
-            rescue =>e
+              rescue =>e
               raise Embulk::DataError.new(e.message)
             end
           end
@@ -208,11 +203,10 @@ module Embulk
         def handle_error(response, error_response)
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
+          when 429
+            # [429] {"error": "too many export requests in progress for this project"}
+            raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
           when 400..499
-            if response.code == 429
-              # [429] {"error": "too many export requests in progress for this project"}
-              raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
-            end
             raise ConfigError.new("[#{response.code}] #{error_response}")
           when 500..599
             raise RuntimeError.new("[#{response.code}] #{error_response}")
@@ -222,13 +216,12 @@ module Embulk
         def handle_error_for_JQL(response, error_response)
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
+          when 429
+            Embulk.logger.info "Hit rate limit sleep for 1 hour"
+            sleep(60 * 60)
+            # [429] {"error": "too many export requests in progress for this project"}
+            raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
           when 400..499
-            if response.code == 429
-              Embulk.logger.info "Hit rate limit sleep for 1 hour"
-              sleep(60 * 60)
-              # [429] {"error": "too many export requests in progress for this project"}
-              raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
-            end
             raise ConfigError.new("[#{response.code}] #{error_response}")
           when 500..599
             raise RuntimeError.new("[#{response.code}] #{error_response}")
