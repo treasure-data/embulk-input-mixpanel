@@ -71,6 +71,7 @@ module Embulk
           config = {
             type: "mixpanel",
             jql_mode: true,
+            incremental: false,
             jql_script: JQL_SCRIPT,
             api_secret: API_SECRET,
             from_date: FROM_DATE,
@@ -89,6 +90,7 @@ module Embulk
             type: "mixpanel",
             api_secret: API_SECRET,
             jql_mode: true,
+            incremental: false,
             jql_script: JQL_SCRIPT,
             timezone: TIMEZONE,
             from_date: (today + 1).to_s
@@ -107,6 +109,7 @@ module Embulk
             api_secret: API_SECRET,
             from_date: from_date,
             timezone: TIMEZONE,
+            incremental: false,
             jql_mode: true,
             jql_script: JQL_SCRIPT,
           }
@@ -123,6 +126,7 @@ module Embulk
             api_secret: API_SECRET,
             timezone: TIMEZONE,
             jql_mode: true,
+            incremental: false,
             jql_script: JQL_SCRIPT,
           }
 
@@ -142,6 +146,7 @@ module Embulk
             api_secret: API_SECRET,
             timezone: TIMEZONE,
             jql_mode: true,
+            incremental: false,
             jql_script: JQL_SCRIPT,
           }
 
@@ -157,6 +162,7 @@ module Embulk
             api_secret: API_SECRET,
             timezone: TIMEZONE,
             jql_mode: true,
+            incremental: false,
             jql_script: JQL_SCRIPT,
           }
 

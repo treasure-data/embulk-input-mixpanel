@@ -13,7 +13,7 @@ module Embulk
 
         NOT_PROPERTY_COLUMN = "event".freeze
         DEFAULT_FETCH_DAYS = 7
-        DEFAULT_TIME_COLUMN = 'time'
+        DEFAULT_TIME_COLUMN = 'time'.freeze
 
         def initialize(config)
           @config = config

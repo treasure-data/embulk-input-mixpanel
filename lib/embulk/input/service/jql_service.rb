@@ -45,6 +45,12 @@ module Embulk
           client = create_client
 
           sample_records = client.send_jql_script_small_dataset(parameters(@config.param(:jql_script, :string, nil), range.first, range.last))
+
+          @incremental = @config.param(:incremental, :bool, default: true)
+          @incremental_column = @config.param(:incremental_column, :string, default: nil)
+
+          validate_result_contain_incremental_column(sample_records)
+
           guess_from_records(sample_records)
         end
 
@@ -52,9 +58,10 @@ module Embulk
           @dates = task[:dates]
           @schema = task[:schema]
           @timezone = task[:timezone]
-          incremental_column = task[:incremental_column]
+          @incremental_column = task[:incremental_column]
+          @incremental = task[:incremental]
           latest_fetched_time = task[:latest_fetched_time]
-          incremental = task[:incremental]
+
 
           client = create_client
 
@@ -69,15 +76,9 @@ module Embulk
             end
             validate_result(records)
             records.each do |record|
-              if incremental
-                unless incremental_column
-                  Embulk.logger.warn "incremental_column should be specified when running in incremental mode to avoid duplicated"
-                  Embulk.logger.warn "Use default value #{DEFAULT_TIME_COLUMN}"
-                  incremental_column = DEFAULT_TIME_COLUMN
-                end
-
-                if @schema.map {|col| col["name"]}.include?(incremental_column)
-                  record_incremental_column = record[incremental_column.to_sym]
+              if @incremental
+                if @schema.map {|col| col["name"]}.include?(@incremental_column)
+                  record_incremental_column = record[@incremental_column.to_sym]
                   if record_incremental_column
                     if record_incremental_column <= latest_fetched_time.to_i
                       ignored_fetched_record_count += 1
@@ -230,6 +231,18 @@ module Embulk
           if records.is_a?(Array) && records.first.is_a?(Integer)
             # incase using reduce, it only return the number of records
             raise Embulk::ConfigError.new("Non-supported result. Revise your JQL.")
+          end
+        end
+
+        def validate_result_contain_incremental_column(record)
+          unless @incremental_column
+            Embulk.logger.warn "incremental_column should be specified when running in incremental mode to avoid duplicated"
+            Embulk.logger.warn "Use default value #{DEFAULT_TIME_COLUMN}"
+            @incremental_column = DEFAULT_TIME_COLUMN
+          end
+
+          if @incremental && !record.include?(@incremental_column)
+            raise Embulk::ConfigError.new("Missing Incremental Field (<incremental_column>) in the returned dataset. Specify the correct Incremental Field value.")
           end
         end
 
