@@ -46,9 +46,10 @@ module Embulk
 
           sample_records = client.send_jql_script_small_dataset(parameters(@config.param(:jql_script, :string, nil), range.first, range.last))
 
+          validate_result(sample_records)
+
           @incremental = @config.param(:incremental, :bool, default: true)
           @incremental_column = @config.param(:incremental_column, :string, default: nil)
-
           validate_result_contain_incremental_column(sample_records)
 
           guess_from_records(sample_records)
@@ -234,14 +235,14 @@ module Embulk
           end
         end
 
-        def validate_result_contain_incremental_column(record)
+        def validate_result_contain_incremental_column(records)
           unless @incremental_column
             Embulk.logger.warn "incremental_column should be specified when running in incremental mode to avoid duplicated"
             Embulk.logger.warn "Use default value #{DEFAULT_TIME_COLUMN}"
             @incremental_column = DEFAULT_TIME_COLUMN
           end
 
-          if @incremental && !record.include?(@incremental_column)
+          if @incremental && records.length > 0 && !records[0].include?(@incremental_column)
             raise Embulk::ConfigError.new("Missing Incremental Field (<incremental_column>) in the returned dataset. Specify the correct Incremental Field value.")
           end
         end
