@@ -120,18 +120,6 @@ module Embulk
 
         def guess_from_records(sample_props)
           validate_result(sample_props)
-          schema = Guess::SchemaGuess.from_hash_records(sample_props)
-
-          schema.map do |col|
-            result = {
-              name: col.name,
-              type: col.type,
-            }
-            if (col.name.eql? "time") || (col.eql? "last_seen")
-              result[:format] = col.format if col.format
-            end
-            result
-          end
 
           begin
             schema = Guess::SchemaGuess.from_hash_records(sample_props)
@@ -141,7 +129,7 @@ module Embulk
                 type: col.type,
               }
               if (col.name.eql? "time") || (col.eql? "last_seen")
-                result[:format] = col.format if col.format
+                result["format"] = col.format if col.format
               end
               result
             end
@@ -210,10 +198,10 @@ module Embulk
           when NOT_PROPERTY_COLUMN
             record[NOT_PROPERTY_COLUMN]
           when "time"
-            time = record[:time]
+            time = record["time"]
             adjust_timezone(time)
           when "last_seen"
-            last_seen = record[:last_seen]
+            last_seen = record["last_seen"]
             adjust_timezone(last_seen)
           else
             record[name]

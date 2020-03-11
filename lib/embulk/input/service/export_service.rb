@@ -194,7 +194,7 @@ module Embulk
               name: col.name,
               type: col.type,
             }
-            result[:format] = col.format if col.format
+            result["format"] = col.format if col.format
             result
           end.compact
           columns.unshift(name: NOT_PROPERTY_COLUMN, type: :string)
