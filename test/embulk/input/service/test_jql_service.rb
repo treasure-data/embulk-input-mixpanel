@@ -380,6 +380,25 @@ module Embulk
             end
           end
 
+          def test_valid_days_with_backfill
+            days = 5
+
+            stub(Mixpanel).resume() do |task|
+              assert_equal(["2015-02-17", "2015-02-18", "2015-02-19", "2015-02-20", "2015-02-21", "2015-02-22", "2015-02-23", "2015-02-24", "2015-02-25", "2015-02-26"], task[:dates])
+            end
+            config=transaction_config(days).merge("back_fill_days" => 5, "incremental_column" => "test_column", "latest_fetched_time" => 1501599491000)
+            Mixpanel.transaction(config, &control)
+          end
+
+          def test_valid_days_with_backfill_first_run
+            days = 5
+            stub(Mixpanel).resume() do |task|
+              assert_equal(transaction_task(days)[:dates], task[:dates])
+            end
+            config=transaction_config(days).merge("back_fill_days" => 5, "incremental_column" => "test_column")
+            Mixpanel.transaction(config, &control)
+          end
+
           private
 
           def transaction_task(days)

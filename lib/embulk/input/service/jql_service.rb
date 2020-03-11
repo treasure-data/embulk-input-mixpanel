@@ -205,14 +205,6 @@ module Embulk
           }
         end
 
-        def range
-          timezone = @config.param(:timezone, :string, default: "")
-          from_date = @config.param(:from_date, :string, default: (today(timezone) - 2).to_s)
-          fetch_days = @config.param(:fetch_days, :integer, default: nil)
-
-          RangeGenerator.new(from_date, fetch_days, timezone).generate_range
-        end
-
         def extract_value(record, name)
           case name
           when NOT_PROPERTY_COLUMN
