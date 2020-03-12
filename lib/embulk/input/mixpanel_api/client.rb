@@ -79,25 +79,33 @@ module Embulk
         end
 
         def send_brief_checked_jql_script(params = {})
-          retryer.with_retry do
-            Embulk.logger.info "Sending brief check request to #{@endpoint}"
-            response = httpclient.post(@endpoint, query_string(params))
-            body = response.body
+          Embulk.logger.info "Sending brief check request to #{@endpoint}"
+          limit_client = httpclient
+          limit_client.receive_timeout = 30
 
-            case response.code
-            when 400
-              begin
-                return JSON.parse(body)
-              rescue =>e
-                raise Embulk::DataError.new(e.message)
-              end
-            when 429
-              raise RuntimeError.new("[#{response.code}] #{body} (will retry)")
-            when 400..499
-              raise ConfigError.new("[#{response.code}] #{body}")
-            when 500..599
-              raise RuntimeError.new("[#{response.code}] #{body}")
+          begin
+            response = limit_client.post(@endpoint, query_string(params))
+          rescue HTTPClient::ReceiveTimeoutError
+            raise Embulk::DataError.new "Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data."
+          end
+
+          case response.code
+          when 400
+            begin
+              json = JSON.parse(response.body)
+            rescue =>e
+              raise Embulk::DataError.new(e.message)
             end
+
+            if json
+              if json["error"]["message"].present? && json["error"]["message"].include?("argument must be an object with 'from_date' and 'to_date' properties")
+                return
+              end
+            end
+          when 200
+            raise Embulk::DataError.new "Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data."
+          else
+            Embulk.logger.warn "Fail brief check SQL script"
           end
         end
 

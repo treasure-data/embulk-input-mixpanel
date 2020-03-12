@@ -281,23 +281,6 @@ module Embulk
             Mixpanel.transaction(transaction_config, &control)
           end
 
-          def test_warn_jql_script_contain_time_params
-            stub(Mixpanel).resume(satisfy_task_ignore_start_time(task.merge({dates: target_dates, jql_script: JQL_SCRIPT_WITH_PARAMS})), columns, 1, &control)
-            stub(Embulk.logger).info
-
-            error_response = {"request"=>"/api/2.0/jql/", "error"=>"[Validate failed]Events() argument must be an object with to_date' properties\n"}
-
-            any_instance_of(MixpanelApi::Client) do |klass|
-              stub(klass).send_brief_checked_jql_script(anything) {error_response}
-              stub(klass).send_jql_script_small_dataset(anything) {records}
-            end
-
-            mock(Embulk.logger).warn(anything)
-            mock(Embulk.logger).warn("Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data.")
-
-            Mixpanel.transaction(transaction_config.merge("jql_script"=>JQL_SCRIPT_WITH_PARAMS), &control)
-          end
-
           private
 
           def dates

@@ -63,7 +63,6 @@ module Embulk
           @incremental = task[:incremental]
           latest_fetched_time = task[:latest_fetched_time]
 
-
           client = create_client
 
           ignored_fetched_record_count = 0
@@ -241,19 +240,8 @@ module Embulk
             script: @config[:jql_script]
           }
 
-          begin
-            response = client.send_brief_checked_jql_script(params_script_only)
+          client.send_brief_checked_jql_script(params_script_only)
 
-            if response
-              message = response["error"]
-              if message
-                unless message.include?("argument must be an object with 'from_date' and 'to_date' properties")
-                  Embulk.logger.warn "Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data."
-                end
-              end
-            end
-          rescue
-          end
         end
 
         def validate_jql_script
