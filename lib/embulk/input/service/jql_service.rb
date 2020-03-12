@@ -198,11 +198,17 @@ module Embulk
           when NOT_PROPERTY_COLUMN
             record[NOT_PROPERTY_COLUMN]
           when "time"
-            time = record["time"]
-            adjust_timezone(time)
+            # convert from ms -> second
+            if record["time"].present?
+              time = record["time"] / 1000
+              adjust_timezone(time)
+            end
           when "last_seen"
-            last_seen = record["last_seen"]
-            adjust_timezone(last_seen)
+            # convert from ms -> second
+            if record["time"].present?
+              last_seen = record["last_seen"] / 1000
+              adjust_timezone(last_seen)
+            end
           else
             record[name]
           end
