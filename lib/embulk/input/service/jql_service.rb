@@ -60,6 +60,12 @@ module Embulk
           @schema = task[:schema]
           @timezone = task[:timezone]
           @incremental_column = task[:incremental_column]
+          unless @incremental_column
+            Embulk.logger.warn "incremental_column should be specified when running in incremental mode to avoid duplicated"
+            Embulk.logger.warn "Use default value #{DEFAULT_TIME_COLUMN}"
+            @incremental_column = DEFAULT_TIME_COLUMN
+          end
+
           @incremental = task[:incremental]
           latest_fetched_time = task[:latest_fetched_time]
 
@@ -78,7 +84,7 @@ module Embulk
             records.each do |record|
               if @incremental
                 if @schema.map {|col| col["name"]}.include?(@incremental_column)
-                  record_incremental_column = record[@incremental_column.to_sym]
+                  record_incremental_column = record[@incremental_column]
                   if record_incremental_column
                     if record_incremental_column <= latest_fetched_time.to_i
                       ignored_fetched_record_count += 1
@@ -87,6 +93,8 @@ module Embulk
                       next_fetched_time = [record_incremental_column, latest_fetched_time.to_i].max
                     end
                   end
+                else
+                  raise Embulk::ConfigError.new("Missing Incremental Field (<incremental_column>) in the returned dataset. Specify the correct Incremental Field value.")
                 end
               end
               values = extract_values(record)

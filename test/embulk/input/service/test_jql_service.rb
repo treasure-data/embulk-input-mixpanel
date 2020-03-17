@@ -559,7 +559,7 @@ module Embulk
       class RunTest < self
         def setup_client
           any_instance_of(MixpanelApi::Client) do |klass|
-            stub(klass).send_jql_script(anything) {records}
+            stub(klass).send_jql_script(anything) {data}
           end
         end
 
@@ -573,7 +573,7 @@ module Embulk
           any_instance_of(Embulk::Input::Service::JqlService) do |klass|
             stub(klass).preview? {false}
           end
-          mock(@page_builder).add(anything).times(records.length)
+          mock(@page_builder).add(anything).times(data.length)
           mock(@page_builder).finish
           task_report = @plugin.run
           assert_equal("2015-03-01", task_report[:to_date])
@@ -583,7 +583,7 @@ module Embulk
           any_instance_of(Embulk::Input::Service::JqlService) do |klass|
             stub(klass).preview? {false}
           end
-          mock(@page_builder).add(anything).times(records.length)
+          mock(@page_builder).add(anything).times(data.length)
           mock(@page_builder).finish
           plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>"1452027551999"}), nil, nil, @page_builder)
           task_report = plugin.run
@@ -611,7 +611,7 @@ module Embulk
               stub(klass).preview? {false}
             end
 
-            mock(@page_builder).add(anything).times(records.length * 2)
+            mock(@page_builder).add(anything).times(data.length * 2)
             mock(@page_builder).finish
             plugin.run
           end
@@ -681,8 +681,26 @@ module Embulk
         ] * 30
       end
 
-      def record
+      def data
+        [
+          {
+            "name"=> "pageview",
+            "distinct_id"=> "02a99746-0f52-4acd-9a53-7deb763803ca",
+            "labels"=> [],
+            "time"=> 1452027552000,
+            "sampling_factor"=> 1,
+            "dataset"=> "$mixpanel",
+            "properties"=> {
+              "$email"=> "Alexander.Davidson@hotmailx.com",
+              "$import"=> true,
+              "country"=> "UK",
+              "load_time_ms"=> 4
+            }
+          },
+        ] * 30
+      end
 
+      def record
           {
             "name": "pageview",
             "distinct_id": "02a99746-0f52-4acd-9a53-7deb763803ca",
