@@ -1,3 +1,7 @@
+## 0.6.0 - 2020-03-30
+
+* [enhancement] Support JQL script [#65](https://github.com/treasure-data/embulk-input-mixpanel/pull/65)
+
 ## 0.5.15 - 2020-01-22
 
 * [enhancement] Update the authentication method to latest [#63](https://github.com/treasure-data/embulk-input-mixpanel/pull/63)

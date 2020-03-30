@@ -1,12 +1,14 @@
 require "prepare_embulk"
 require "override_assert_raise"
 require "embulk/input/mixpanel"
+require "embulk/input/service/base_service"
+require "embulk/input/service/export_service"
 require "active_support/core_ext/time"
 require "json"
 
 module Embulk
   module Input
-    class MixpanelTest < Test::Unit::TestCase
+    class ExportServiceTest < Test::Unit::TestCase
       include OverrideAssertRaise
 
       API_SECRET = "api_secret".freeze
@@ -72,6 +74,7 @@ module Embulk
             type: "mixpanel",
             api_secret: API_SECRET,
             from_date: FROM_DATE,
+            timezone: TIMEZONE,
           }
 
           stub_export_all
@@ -90,7 +93,7 @@ module Embulk
           }
 
           stub_export_all
-          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date(TIMEZONE).to_s}/)
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Embulk::Input::Service::ExportService.new(config).default_guess_start_date(TIMEZONE).to_s}/)
 
           Mixpanel.guess(embulk_config(config))
         end
@@ -101,6 +104,7 @@ module Embulk
             type: "mixpanel",
             api_secret: API_SECRET,
             from_date: from_date,
+            timezone: TIMEZONE,
           }
 
           stub_export_all
@@ -113,11 +117,11 @@ module Embulk
           config = {
             type: "mixpanel",
             api_secret: API_SECRET,
-            timezone: TIMEZONE
+            timezone: TIMEZONE,
           }
 
           stub_export_all
-          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Mixpanel.default_guess_start_date(TIMEZONE).to_s}/)
+          mock(Embulk.logger).info(/Guessing.*#{Regexp.escape Embulk::Input::Service::ExportService.new(config).default_guess_start_date(TIMEZONE).to_s}/)
 
           Mixpanel.guess(embulk_config(config))
         end
@@ -126,7 +130,14 @@ module Embulk
           sample_records = records.map do |r|
             r.merge("properties" => {"time" => 1, "array" => [1, 2], "hash" => {foo: "FOO"}})
           end
-          actual = Mixpanel.guess_from_records(sample_records)
+
+          config = {
+            type: "mixpanel",
+            api_secret: API_SECRET,
+            timezone: TIMEZONE,
+          }
+
+          actual = Embulk::Input::Service::ExportService.new(config).guess_from_records(sample_records)
           assert actual.include?(name: "array", type: :json)
           assert actual.include?(name: "hash", type: :json)
         end
@@ -136,6 +147,7 @@ module Embulk
           config = {
             type: "mixpanel",
             api_secret: API_SECRET,
+            timezone: TIMEZONE,
           }
 
           assert_raise(Embulk::DataError) do
@@ -456,7 +468,7 @@ module Embulk
           where: 'properties["$os"] == "Windows"',
           bucket: "987",
         }
-        actual = Mixpanel.export_params(config)
+        actual = Embulk::Input::Service::ExportService.new(config).export_params
 
         assert_equal(expected, actual)
       end
@@ -534,7 +546,7 @@ module Embulk
             timezone: TIMEZONE,
             schema: schema,
             dates: DATES.to_a.map(&:to_s),
-            params: Mixpanel.export_params(embulk_config),
+            params: Mixpanel.service(embulk_config).export_params,
             fetch_unknown_columns: false,
             fetch_custom_properties: false,
             retry_initial_wait_sec: 0,
@@ -558,11 +570,16 @@ module Embulk
           super
           @page_builder = Object.new
           @plugin = Mixpanel.new(task, nil, nil, @page_builder)
-          stub(@plugin).fetch { records }
+          any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+            stub(klass).fetch { records }
+          end
+          # Embulk::Input::Service::ExportService.(:fetch => :records)
         end
 
         def test_preview
-          stub(@plugin).preview? { true }
+          any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+            stub(klass).preview? { true }
+          end
           mock(@page_builder).add(anything).times(records.length)
           mock(@page_builder).finish
 
@@ -570,7 +587,9 @@ module Embulk
         end
 
         def test_run
-          stub(@plugin).preview? { false }
+          any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+            stub(klass).preview? { false }
+          end
           mock(@page_builder).add(anything).times(records.length * 2)
           mock(@page_builder).finish
 
@@ -578,13 +597,16 @@ module Embulk
         end
 
         def test_timezone
-          stub(@plugin).preview? { false }
+          any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+            stub(klass).preview? { false }
+          end
           adjusted = record_epoch - timezone_offset_seconds
           mock(@page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
           mock(@page_builder).finish
 
           @plugin.run
         end
+
         class PartialRunTest < self
           def setup_client
             any_instance_of(MixpanelApi::Client) do |klass|
@@ -598,7 +620,9 @@ module Embulk
 
           def test_run_with_allow_partial_false
             @plugin = Mixpanel.new(task.merge(allow_partial_import: false), nil, nil, @page_builder)
-            stub(@plugin).preview? {false}
+            any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+              stub(klass).preview? { false }
+            end
             assert_raise MixpanelApi::IncompleteExportResponseError do
               @plugin.run
             end
@@ -607,19 +631,25 @@ module Embulk
           def test_run_with_allow_partial_true
             @plugin = Mixpanel.new(task.merge(allow_partial_import: true), nil, nil, @page_builder)
             mock(@page_builder).finish
-            stub(@plugin).preview? {false}
+            any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+              stub(klass).preview? { false }
+            end
             @plugin.run
           end
         end
+
         class SliceRangeRunTest < self
 
           def test_default_slice_range
             plugin = Mixpanel.new(task.merge(slice_range: 2), nil, nil, @page_builder)
-            stub(plugin).preview? {false}
-            stub(plugin).fetch(["2015-02-22", "2015-02-23"],0){[]}
-            stub(plugin).fetch(["2015-02-24", "2015-02-25"],0){[]}
-            stub(plugin).fetch(["2015-02-26", "2015-02-27"],0){[]}
-            stub(plugin).fetch(["2015-02-28", "2015-03-01"],0){[]}
+            any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+              stub(klass).preview? { false }
+              stub(klass).fetch(["2015-02-22", "2015-02-23"],0,anything){[]}
+              stub(klass).fetch(["2015-02-24", "2015-02-25"],0,anything){[]}
+              stub(klass).fetch(["2015-02-26", "2015-02-27"],0,anything){[]}
+              stub(klass).fetch(["2015-02-28", "2015-03-01"],0,anything){[]}
+            end
+
             mock(@page_builder).finish
             plugin.run
           end
@@ -663,8 +693,10 @@ module Embulk
 
           def test_incremental_column_with_where
             page_builder = Object.new
-            plugin = Mixpanel.new(task.merge(params: task[:params].merge("where" => "abc==def"),latest_fetched_time: 1), nil, nil, page_builder)
-            stub(plugin).preview? {false}
+            plugin = Mixpanel.new(task.merge(params: task[:params].merge(where: "abc==def"),latest_fetched_time: 1), nil, nil, page_builder)
+            any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+              stub(klass).preview? { false }
+            end
             adjusted = record_epoch - timezone_offset_seconds
             mock(page_builder).add(["FOO", adjusted, "event"]).times(records.length * 2)
             mock(page_builder).finish
@@ -719,8 +751,10 @@ module Embulk
           def setup
             super
             @page_builder = Object.new
-            @plugin = Mixpanel.new(task, nil, nil, @page_builder)
-            stub(@plugin).fetch { [record] }
+            @plugin = Mixpanel.new(DataSource[task.to_a], nil, nil, @page_builder)
+            any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+              stub(klass).fetch { [record] }
+            end
           end
 
           def test_run
@@ -770,8 +804,10 @@ module Embulk
         class UnknownColumnsTest < self
           def setup
             @page_builder = Object.new
-            @plugin = Mixpanel.new(task, nil, nil, @page_builder)
-            stub(@plugin).fetch { records }
+            @plugin = Mixpanel.new(DataSource[task.to_a], nil, nil, @page_builder)
+            any_instance_of(Embulk::Input::Service::ExportService) do |klass|
+              stub(klass).fetch { records }
+            end
           end
 
           def test_run
@@ -840,7 +876,7 @@ module Embulk
           incremental_column: nil,
           schema: schema,
           dates: DATES.to_a.map(&:to_s),
-          params: Mixpanel.export_params(embulk_config),
+          params: Mixpanel.service(embulk_config).export_params,
           fetch_unknown_columns: false,
           fetch_custom_properties: false,
           retry_initial_wait_sec: 2,
@@ -880,6 +916,7 @@ module Embulk
           api_secret: API_SECRET,
           from_date: FROM_DATE,
           fetch_days: DAYS,
+          timezone: TIMEZONE,
           fetch_unknown_columns: false,
           fetch_custom_properties: false,
           retry_initial_wait_sec: 2,

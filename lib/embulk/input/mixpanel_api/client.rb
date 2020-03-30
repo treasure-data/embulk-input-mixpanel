@@ -14,6 +14,8 @@ module Embulk
         PING_RETRY_WAIT = 2
         SMALL_NUM_OF_RECORDS = 10
         DEFAULT_EXPORT_ENDPOINT = "https://data.mixpanel.com/api/2.0/export/".freeze
+        DEFAULT_JQL_ENDPOINT = "https://mixpanel.com/api/2.0/jql/".freeze
+        JQL_RATE_LIMIT = 60
 
         attr_reader :retryer
 
@@ -40,7 +42,7 @@ module Embulk
           end
         end
 
-        def initialize(api_secret, retryer = nil, endpoint = DEFAULT_EXPORT_ENDPOINT)
+        def initialize(api_secret, endpoint, retryer = nil)
           @endpoint = endpoint
           @api_secret = api_secret
           @retryer = retryer || PerfectRetry.new do |config|
@@ -76,6 +78,61 @@ module Embulk
           raise ConfigError.new "#{params["from_date"]}..#{latest_tried_to_date} has no record."
         end
 
+        def send_brief_checked_jql_script(params = {})
+          Embulk.logger.info "Sending brief check request to #{@endpoint}"
+          limit_client = httpclient
+          limit_client.receive_timeout = 30
+
+          begin
+            response = limit_client.post(@endpoint, query_string(params))
+          rescue HTTPClient::ReceiveTimeoutError
+            raise Embulk::DataError.new "Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data."
+          end
+
+          case response.code
+          when 400
+            begin
+              json = JSON.parse(response.body)
+            rescue =>e
+              raise Embulk::DataError.new(e.message)
+            end
+
+            if json
+              if json["error"]["message"].present? && json["error"]["message"].include?("argument must be an object with 'from_date' and 'to_date' properties")
+                return
+              end
+            end
+          when 200
+            raise Embulk::DataError.new "Missing params.start_date and params.end_date in the JQL. Use these parameters to limit the amount of returned data."
+          else
+            Embulk.logger.warn "Fail brief check SQL script"
+          end
+        end
+
+        def send_jql_script(params = {})
+          retryer.with_retry do
+            response = request_jql(params)
+            handle_error(response, response.body)
+            begin
+              return JSON.parse(response.body)
+              rescue =>e
+              raise Embulk::DataError.new(e)
+            end
+          end
+        end
+
+        def send_jql_script_small_dataset(params = {})
+          retryer.with_retry do
+            response = request_jql(params)
+            handle_error(response, response.body)
+            begin
+              return JSON.parse(response.body)[0..SMALL_NUM_OF_RECORDS - 1]
+              rescue =>e
+              raise Embulk::DataError.new(e.message)
+            end
+          end
+        end
+
         def try_to_dates(from_date)
           try_to_dates = 5.times.map do |n|
             # from_date + 1, from_date + 10, from_date + 100, ... so on
@@ -107,18 +164,18 @@ module Embulk
           Embulk.logger.info "Sending request to #{@endpoint}"
           response = httpclient.get(@endpoint, params) do |response, chunk|
             # Only process data if response status is 200..299
-            if response.status/100 == 2
+            if response.status / 100 == 2
               chunk.each_line do |line|
                 begin
                   record = JSON.parse(buf + line)
                   block.call record
                   buf = ""
-                rescue JSON::ParserError => e
+                rescue JSON::ParserError=>e
                   buf << line
                 end
               end
             else
-               error_response << chunk
+              error_response << chunk
             end
           end
           handle_error(response, error_response)
@@ -129,24 +186,37 @@ module Embulk
           end
         end
 
+        def request_jql(parameters)
+          Embulk.logger.info "Sending request to #{@endpoint}"
+          httpclient.post(@endpoint, query_string(parameters))
+        end
+
+        def query_string(prs)
+          URI.encode_www_form({
+            params: JSON.generate(prs[:params]),
+            script: prs[:script]
+          })
+        end
+
         def request_small_dataset(params, num_of_records)
           # guess/preview
           # Try to fetch first number of records
           params["limit"] = num_of_records
           Embulk.logger.info "Sending request to #{@endpoint}"
           res = httpclient.get(@endpoint, params)
-          handle_error(res,res.body)
+          handle_error(res, res.body)
           response_to_enum(res.body)
         end
 
         def handle_error(response, error_response)
           Embulk.logger.debug "response code: #{response.code}"
           case response.code
+          when 429
+            # [429] {"error": "too many export requests in progress for this project"}
+            Embulk.logger.info "Hit rate limit sleep for 1 hour"
+            sleep(60 * 60)
+            raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
           when 400..499
-            if response.code == 429
-              # [429] {"error": "too many export requests in progress for this project"}
-              raise RuntimeError.new("[#{response.code}] #{error_response} (will retry)")
-            end
             raise ConfigError.new("[#{response.code}] #{error_response}")
           when 500..599
             raise RuntimeError.new("[#{response.code}] #{error_response}")
