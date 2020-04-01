@@ -82,11 +82,11 @@ module Embulk
                 if @schema.map {|col| col["name"]}.include?(@incremental_column)
                   record_incremental_column = record[@incremental_column]
                   if record_incremental_column
-                    if record_incremental_column <= latest_fetched_time.to_i
+                    if record_incremental_column <= latest_fetched_time
                       ignored_fetched_record_count += 1
                       next
                     else
-                      next_fetched_time = [record_incremental_column, latest_fetched_time.to_i].max
+                      next_fetched_time = [record_incremental_column, next_fetched_time].max
                     end
                   end
                 else
