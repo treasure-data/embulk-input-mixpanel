@@ -13,10 +13,6 @@ module Embulk
 
           validate_jql_script
           validate_fetch_days
-
-          if @config.param(:incremental, :bool, default: true)
-            validate_jql_script_contain_time_params
-          end
         end
 
         def create_task
@@ -205,16 +201,25 @@ module Embulk
           when NOT_PROPERTY_COLUMN
             record[NOT_PROPERTY_COLUMN]
           when "time"
-            # convert from ms -> second
             if record["time"].present?
-              time = record["time"] / 1000
-              adjust_timezone(time)
+              value = record["time"]
+              if value > 0
+                time = record["time"] / 1000
+                adjust_timezone(time)
+              else
+                value
+              end
             end
           when "last_seen"
-            # convert from ms -> second
-            if record["time"].present?
-              last_seen = record["last_seen"] / 1000
-              adjust_timezone(last_seen)
+            if record["last_seen"].present?
+              value = record["last_seen"]
+              if value > 0
+                # last_seen format in ms
+                time = record["last_seen"] / 1000
+                adjust_timezone(time)
+              else
+                value
+              end
             end
           else
             record[name]
@@ -238,18 +243,6 @@ module Embulk
           if @incremental && records.length > 0 && !records[0].include?(@incremental_column)
             raise Embulk::ConfigError.new("Missing Incremental Field (<incremental_column>) in the returned dataset. Specify the correct Incremental Field value.")
           end
-        end
-
-        def validate_jql_script_contain_time_params
-          client = create_client
-
-          params_script_only = {
-            params: {},
-            script: @config[:jql_script]
-          }
-
-          client.send_brief_checked_jql_script(params_script_only)
-
         end
 
         def validate_jql_script
