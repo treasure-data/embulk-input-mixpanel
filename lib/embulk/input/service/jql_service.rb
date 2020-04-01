@@ -221,6 +221,17 @@ module Embulk
                 value
               end
             end
+          when @incremental_column
+            if record[@incremental_column].present?
+              value = record[@incremental_column]
+              if value > 0
+                # format in ms
+                time = record[@incremental_column] / 1000
+                adjust_timezone(time)
+              else
+                value
+              end
+            end
           else
             record[name]
           end
