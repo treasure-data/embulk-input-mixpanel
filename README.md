@@ -33,13 +33,16 @@ To get it, you should log in mixpanel website, and click gear icon at the lower 
 
 - **api_secret**: project API Secret (string, required)
 - **export_endpoint**: the Data Export API's endpoint (string, default to "http://data.mixpanel.com/api/2.0/export")
+- **jql_endpoint**: the JQL API's endpoint (string, default to "https://mixpanel.com/api/2.0/jql/")
+- **jql_mode**: using JQL or export endpoint (boolean, default to false)
+- **jql_script**: JQL script sent the JQL endpoint(string)
 - **timezone**: project timezone(string, required)
 - **from_date**: From date to export (string, optional, default: today - 2)
   - NOTE: Mixpanel API supports to export data from at least 2 days before to at most the previous day.
 - **fetch_days**: Count of days range for exporting (integer, optional, default: from_date - (today - 1))
   - NOTE: Mixpanel doesn't support to from_date > today - 2
 - **incremental**: Run incremental mode nor not (boolean, optional, default: true)
-- **incremental_column**: Column to be add to where query as a constraint for incremental time. Only data that have incremental_column timestamp > than previous latest_fetched_time will be return (string, optional, default: nil)
+- **incremental_column**: Column to be add to where query as a constraint for incremental time. Only data that have incremental_column timestamp > than previous latest_fetched_time will be return (string, optional, default: time)
 - **back_fill_time**: Amount of time that will be subtracted from `from_date` to calculate the final `from_date` that will be use for API Request. This is due to Mixpanel caching data on user devices before sending it to Mixpanel server (integer, optional, default: 5)
   - NOTE: Only have effect when incremental is true and incremental_column is specified
 - **incremental_column_upper_limit_delay_in_seconds**: When query with incremental column, plugin will lock the upper limit of incremental column query with the job start time, in order to avoid issue with data that commit when the job is running

@@ -585,7 +585,7 @@ module Embulk
           end
           mock(@page_builder).add(anything).times(data.length)
           mock(@page_builder).finish
-          plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>"1452027551999"}), nil, nil, @page_builder)
+          plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>1452027551999}), nil, nil, @page_builder)
           task_report = plugin.run
           assert_equal("2015-03-01", task_report[:to_date])
           assert_equal("1452027552000", task_report[:latest_fetched_time])
@@ -598,7 +598,7 @@ module Embulk
 
           mock(@page_builder).add(anything).times(0)
           mock(@page_builder).finish
-          plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>"1452027552001"}), nil, nil, @page_builder)
+          plugin = Mixpanel.new(DataSource[task.to_a].merge({"incremental_column"=>"time", "latest_fetched_time"=>1452027552001}), nil, nil, @page_builder)
           task_report = plugin.run
           assert_equal("2015-03-01", task_report[:to_date])
           assert_equal("1452027552001", task_report[:latest_fetched_time])

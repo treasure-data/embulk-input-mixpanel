@@ -1,3 +1,7 @@
+## 0.6.1 - 2020-04-06
+
+* [enhancement] Support JQL script for Profile [#66](https://github.com/treasure-data/embulk-input-mixpanel/pull/66)
+
 ## 0.6.0 - 2020-03-30
 
 * [enhancement] Support JQL script [#65](https://github.com/treasure-data/embulk-input-mixpanel/pull/65)
